@@ -22,14 +22,41 @@
 
     let adsRemovalCount = 0;
 
-    function removeAdsElements() {
-        let elements = [...document.querySelectorAll("[data-post-id]~*:not([data-post-id]):not(.w10Yp)")];
-        for (const elm of elements) {
-            //        console.log('elm',elm.className)
-            elm.classList.add('w10Yp');
+    function adsElementFilter(el){
+
+        if(!el || el.nodeType !==1) return false;
+
+        let elementLevelAds = false;
+
+        if(el.childElementCount === 1){
+            let divs = el.querySelectorAll('div');
+            if(divs.length === 1 && divs[0].id.includes('-') ) elementLevelAds = true;
+            else if(['INS','IFRAME'].includes(el.firstChild.tagName)) elementLevelAds = true;
+            else elementLevelAds = false;
+        }else {
+            elementLevelAds = el.querySelectorAll('ins, iframe').length >= 1;
         }
 
-        elements = elements.filter(el => el.querySelectorAll('ins, iframe').length >= 1).filter(el => el.textContent.trim().length == 0);
+        if(!elementLevelAds) return false;
+
+        let textContent = el.textContent;
+        if(typeof textContent !== 'string') return false;
+        if(textContent.length === 0) return true;
+        if(textContent.trim().length === 0) return true;
+
+        return false;
+
+    }
+
+    function removeAdsElements() {
+        // w11Yp for actual removal checking
+        let elements = [...document.querySelectorAll("[data-post-id]~*:not([data-post-id]):not(.w11Yp)")];
+        for (const elm of elements) {
+            //        console.log('elm',elm.className)
+            elm.classList.add('w11Yp');
+        }
+
+        elements = elements.filter(adsElementFilter);
         if (elements.length > 0) {
             for (const el of elements) el.classList.add('lihkg-ads-block');
             // do not remove the elm on DOM. It creates ERROR when reading sub-quoted messages.
@@ -44,6 +71,8 @@
 
 
     const observer = new MutationObserver((mutations) => {
+
+        // w10Yt for new post checking
 
         let mz = 0;
         for (const s of document.querySelectorAll('[data-post-id]~*:not([data-post-id]):not(.w10Yt)')) {

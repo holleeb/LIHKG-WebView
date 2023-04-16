@@ -143,7 +143,7 @@
 
 
 
-    async function asyncStateChanged(evt) {
+    async function asyncStateChanged(evt, forceHistoryBack) {
 
 
 
@@ -172,13 +172,18 @@
                 //            console.log(document.querySelector('.W15ZoWi7Cvr8G_0483Wfn a > i.i-close'))
                 let p = document.querySelector('.W15ZoWi7Cvr8G_0483Wfn a > i.i-close')
                 if (p) p.click();
-            } else if (!currentState.pDs.gameIframe && prevState.pDs.gameIframe) {
+            } else if (!currentState.pDs.gameIframe && prevState.pDs.gameIframe && !forceHistoryBack) {
 
                 let p = document.querySelector('._3chEw1COjDsJDNGekjbxKP > i.i-game')
                 if (p) p.click();
 
 
-            } else if (!currentState.pDs.settingsShown && prevState.pDs.settingsShown) {
+            } else if (!currentState.pDs.registerPopup && prevState.pDs.registerPopup) {
+
+                 let p = document.querySelector('._34dVbr5A8khk2N65H9Nl-j');
+                 if (p) p.click();
+
+             }  else if (!currentState.pDs.settingsShown && prevState.pDs.settingsShown) {
 
                 let p = document.querySelector('._34dVbr5A8khk2N65H9Nl-j ._1nqRVNQ2PyO3vnAwZIISAJ .i-close');
                 if (p) p.click();
@@ -340,7 +345,7 @@
 
 
 
-    async function asyncStateChangedW(evt) {
+    async function asyncStateChangedW(evt, forceHistoryBack) {
 
 
         const {
@@ -357,7 +362,7 @@
 
 
             busyDom = Date.now() + 800;
-            await asyncStateChanged(evt);
+            await asyncStateChanged(evt, forceHistoryBack);
 
             busyDom = Date.now() + 140;
 
@@ -371,7 +376,8 @@
     // this is a customized event you can obtain all changes of state
     window.addEventListener('statechanged', function(evt) {
 
-        asyncStateChangedW(evt);
+        asyncStateChangedW(evt, Date.now() - forceHistoryBackL < 80);
+        forceHistoryBackL = 0;
 
         if(typeof xec2D =='object' && xec2D !== null) xec2D.stateChanged(location.href);
 
@@ -441,12 +447,47 @@
 
     }, false);
 
+    let forceHistoryBackL = 0;
+
+    window.addEventListener('message', function(evt){
+
+        if(evt.data === 'onGameClose' && evt.isTrusted && evt.origin === "https://game.lihkg.com" && history.length >= 1 && document.visibilityState === 'visible'){
+            forceHistoryBackL = Date.now();
+            history.go(-1);
+        }
+    });
+
+//    document.addEventListener('pointerdown', function(evt){
+//            if(!evt || !evt.target || !evt.isTrusted || evt.target.nodeType != 1 || !evt.cancelable) return;
+//            if(typeof xec2D != 'object' || !xec2D) return;
+//            let href = evt.target.href;
+//            if(href){
+//                let m = /^(https?\:\/\/lihkg\.com\/thread\/\d+\/page\/\d+)\?post=\d+$/.exec(href);
+//                if(m && m[1]){
+//                    evt.target.href = m[1];
+//                }
+//                console.log(evt.target.href)
+//                return;
+//            }
+//
+//    })
+
     document.addEventListener('click', function(evt){
         if(!evt || !evt.target || !evt.isTrusted || evt.target.nodeType != 1 || !evt.cancelable) return;
         if(typeof xec2D != 'object' || !xec2D) return;
+        let href = evt.target.href;
+        if(href){
+            // remove unnecessary "?post="
+            let m = /^(https?\:\/\/lihkg\.com\/thread\/\d+\/page\/\d+)\?post=\d+$/.exec(href);
+            if(m && m[1]){
+                evt.target.href = m[1];
+            }
+            return;
+        }
         if(typeof history != 'object' || !history || !history.length) return;
         let target = evt.target;
         let elmTarget = evt.target.closest('div[class]');
+        if(!elmTarget) return;
         let action = '';
         for(const className of elmTarget.classList){
 
@@ -464,9 +505,14 @@
                     if(target.matches('._34dVbr5A8khk2N65H9Nl-j ._1nqRVNQ2PyO3vnAwZIISAJ .i-close')) action = 'close-settings';
                     break;
 
+
+                case '_34dVbr5A8khk2N65H9Nl-j':
+                    if(target.matches('._34dVbr5A8khk2N65H9Nl-j') && document.querySelector('._34dVbr5A8khk2N65H9Nl-j a[href*="/register"]')) action = 'close-register-popup';
+                    break;
+
                 case '_3ENsL6YTH5utnKciHKGFd_':
 
-                    if(target.matches('body > div[data-body-portal] ._15Y0ebHstpjSjX2xCZCZ8U ._3ENsL6YTH5utnKciHKGFd_')) action = 'close-nested-reply-div';
+                    if(target.matches('body > div[data-body-portal] ._15Y0ebHstpjSjX2xCZCZ8U ._3ENsL6YTH5utnKciHKGFd_')) action = 'close-pinned-reply-div';
                     break;
 
                 case 'zcEinSkC-o0d0G7_NVOA8':
@@ -534,6 +580,12 @@
             hsObj.settingsShown = document.querySelectorAll('._34dVbr5A8khk2N65H9Nl-j li').length;
 
         }
+
+        if(document.querySelector('._34dVbr5A8khk2N65H9Nl-j a[href*="/register"]')) { // ._34dVbr5A8khk2N65H9Nl-j under body
+
+           hsObj.registerPopup = document.querySelectorAll('._34dVbr5A8khk2N65H9Nl-j a[href*="/"]').length;
+
+       }
 
 
 
