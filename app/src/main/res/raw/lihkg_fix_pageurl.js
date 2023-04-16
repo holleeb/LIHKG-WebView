@@ -439,7 +439,66 @@
 
         //        console.log("touchRT", touchRT);
 
-    }, false)
+    }, false);
+
+    document.addEventListener('click', function(evt){
+        if(!evt || !evt.target || !evt.isTrusted || evt.target.nodeType != 1 || !evt.cancelable) return;
+        if(typeof xec2D != 'object' || !xec2D) return;
+        if(typeof history != 'object' || !history || !history.length) return;
+        let target = evt.target;
+        let elmTarget = evt.target.closest('div[class]');
+        let action = '';
+        for(const className of elmTarget.classList){
+
+            switch(elmTarget.className){
+
+                case 'qS4Iosr432bIbXcjtpG0p': //
+                    if(target.matches('button[data-close-region]')) action = 'close-media-archive-cross';
+                    break;
+
+                case 'Fjkeu8rp1XE7mqA3uW1tY': //
+                    if(target.matches('._1AEEI1goagMu9r5fVYt-Y4 button._1fEx42oSb0uVYu_3Dhqm95 > i.i-close')) action = 'close-photo-display-cross';
+                    break;
+
+                case '_10tWW0o-L-5oSH8lCBl9ai':
+                    if(target.matches('._34dVbr5A8khk2N65H9Nl-j ._1nqRVNQ2PyO3vnAwZIISAJ .i-close')) action = 'close-settings';
+                    break;
+
+                case '_3ENsL6YTH5utnKciHKGFd_':
+
+                    if(target.matches('body > div[data-body-portal] ._15Y0ebHstpjSjX2xCZCZ8U ._3ENsL6YTH5utnKciHKGFd_')) action = 'close-nested-reply-div';
+                    break;
+
+                case 'zcEinSkC-o0d0G7_NVOA8':
+
+                    if(target.matches('body > div[data-body-portal] ._15Y0ebHstpjSjX2xCZCZ8U .zcEinSkC-o0d0G7_NVOA8 i.i-close')) action = 'close-nested-reply-cross';
+                    break;
+
+
+                case 'kuYE8juwPfVTS-qncq1Cp':
+
+                    if(target.matches('.qS4Iosr432bIbXcjtpG0p div.kuYE8juwPfVTS-qncq1Cp[data-close-region]')) action =  'close-media-archive-div';
+                    break;
+
+
+                case 'T1aknDSneV_Pvm2nQkyYk': //
+                    if(target.matches('._1AEEI1goagMu9r5fVYt-Y4 div.T1aknDSneV_Pvm2nQkyYk')) action = 'close-photo-display-div';
+                    break;
+
+            }
+            if(action) break;
+
+        }
+
+        if(action && action.startsWith('close-')) {
+            evt.preventDefault();
+            evt.stopPropagation();
+            evt.stopImmediatePropagation();
+
+            history.go(-1);
+        }
+        console.log("NativeClick", action, elmTarget.className, target.tagName);
+    }, true)
 
     function domStatus() {
 

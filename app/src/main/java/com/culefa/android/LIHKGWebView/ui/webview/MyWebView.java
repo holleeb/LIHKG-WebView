@@ -205,6 +205,11 @@ public class MyWebView extends AdvancedWebView {
         public MyJavaScriptInterface(Context context) {
             this.context = context;
         }
+//
+//        @JavascriptInterface
+//        public void closeClickHandler(){
+//
+//        }
 
         @JavascriptInterface
         public void stopScroll(){
