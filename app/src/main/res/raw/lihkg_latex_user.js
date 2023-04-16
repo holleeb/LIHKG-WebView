@@ -113,7 +113,7 @@
             s.classList.add('y24Yt');
             arr.push(s);
         }
-        delayedCheck(arr);
+        if(arr.length >= 1) delayedCheck(arr);
     });
 
     // Start observing the body element for changes
