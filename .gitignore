@@ -15,6 +15,11 @@
 *.properties
 *.pro
 
+# Caches and Logs
+*.cache
+*.tmp
+*.log
+
 # Generated files
 bin/
 gen/
