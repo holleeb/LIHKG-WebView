@@ -29,6 +29,24 @@
         }
     }
 
+    function obtainPopups(){
+
+        let popups = document.querySelectorAll('._34dVbr5A8khk2N65H9Nl-j:not(.lihkg-popup-view) ._27SmIe4FGDNnK7apcCB3W7 ._3dbMg7zkkTIVJ5VZ3ygu4-');
+
+        for(const popup of popups){
+            let popupViewContainer = popup.closest('._34dVbr5A8khk2N65H9Nl-j');
+            if(popupViewContainer){
+                popupViewContainer.classList.add('lihkg-popup-view');
+            }
+        }
+
+        popups = document.querySelectorAll('div.lihkg-popup-view')
+
+
+        if(popups.length === 0) return null;
+        return [...popups];
+    }
+
     let busyDom = 0;
 
 
@@ -42,20 +60,27 @@
             return location.pathname;
         },
         modifyByPushState(newState, newUrl) {
+
+//            console.log('modifyByPushState1', simpleKeyValuesHash(this.currentState?this.currentState.pDs:null))
             this.prevState = this.currentState;
             this.currentState = newState;
             this.prevUrl = this.currentUrl;
             this.currentUrl = newUrl;
+//            console.log('modifyByPushState2', simpleKeyValuesHash(this.currentState?this.currentState.pDs:null))
+            this.currentState.pDs = Object.assign({}, this.currentState.pDs);
             this.onStateChanged(null, null);
         },
         modifyByOnPopState(evt) {
+//            console.log('modifyByOnPopState1', simpleKeyValuesHash(this.currentState?this.currentState.pDs:null))
             this.prevState = this.currentState;
             this.currentState = evt.state;
             this.prevUrl = this.currentUrl;
             this.currentUrl = this.getUrl();
+//            console.log('modifyByOnPopState2', simpleKeyValuesHash(this.currentState?this.currentState.pDs:null))
             this.onStateChanged(false, false);
         },
         modifyByReplaceState(newState, newUrl) {
+//            console.log('modifyByReplaceState1', simpleKeyValuesHash(this.currentState?this.currentState.pDs:null))
             let replacedState = this.currentState;
             let replacedUrl = this.currentUrl;
             this.currentState = newState;
@@ -76,6 +101,7 @@
             }))
         }
     }
+
 
     function stopScroll() {
 
@@ -104,6 +130,7 @@
     function pushStateM(state, title, href) {
         title = '';
         href = href.replace('https://lihkg.com/', '/');
+        if(href.endsWith('#')) href = href.substring(0, href.length-1);
         window.history.pushState533(state, title, href);
         stateMgr.modifyByPushState(state, href);
     }
@@ -111,13 +138,14 @@
     function replaceStateM(state, title, href) {
         title = '';
         href = href.replace('https://lihkg.com/', '/');
+        if(href.endsWith('#')) href = href.substring(0, href.length-1);
         window.history.replaceState644(state, title, href);
         stateMgr.modifyByReplaceState(state, href);
     }
     // notify the popstate using modifyByOnPopState(event) in the event handling
     window.addEventListener('popstate', function(evt) {
 
-        busyDom = Date.now() + 80;
+        busyDom = Date.now() + 60;
         stateMgr.modifyByOnPopState(evt);
 
         setTimeout(() => {
@@ -183,10 +211,27 @@
                  let p = document.querySelector('._34dVbr5A8khk2N65H9Nl-j');
                  if (p) p.click();
 
-             }  else if (!currentState.pDs.settingsShown && prevState.pDs.settingsShown) {
+           } else if (   (currentState.pDs.popupCount||0) === (prevState.pDs.popupCount||0)-1  ){
 
-                let p = document.querySelector('._34dVbr5A8khk2N65H9Nl-j ._1nqRVNQ2PyO3vnAwZIISAJ .i-close');
-                if (p) p.click();
+                    let popupViews = obtainPopups();
+                    if(popupViews && popupViews.length>=1){
+
+                        let popupView = popupViews[popupViews.length-1];
+
+                        if(popupView) popupView.click();
+
+
+                    }
+
+//             }  else if (!currentState.pDs.shareBoxShown && prevState.pDs.shareBoxShown) {
+//
+//                let p = document.querySelector('._34dVbr5A8khk2N65H9Nl-j ._1nqRVNQ2PyO3vnAwZIISAJ .i-close');
+//                if (p) p.click();
+//
+//              }   else if (!currentState.pDs.settingsShown && prevState.pDs.settingsShown) {
+//
+//                let p = document.querySelector('._34dVbr5A8khk2N65H9Nl-j ._1nqRVNQ2PyO3vnAwZIISAJ .i-close');
+//                if (p) p.click();
 
             } else if (!currentState.pDs.mediaArchiveOverlayShown && prevState.pDs.mediaArchiveOverlayShown) {
 
@@ -343,8 +388,6 @@
 
     }
 
-
-
     async function asyncStateChangedW(evt, forceHistoryBack) {
 
 
@@ -357,18 +400,17 @@
             replacedUrl
         } = evt.detail;
 
-
         if (replacedState === false && replacedUrl === false) {
 
+            while(Date.now() < busyDom){
+                await new Promise(r=>setTimeout(r, 80));
+            }
 
             busyDom = Date.now() + 800;
             await asyncStateChanged(evt, forceHistoryBack);
-
             busyDom = Date.now() + 140;
 
         }
-
-
 
 
     }
@@ -418,7 +460,7 @@
         passive: true
     })
 
-    document.addEventListener('touchend', function() {
+    let touchEndHandlerForPageUrl = ()=>{
 
         busyDom = 0;
         touchQT = 0;
@@ -427,10 +469,18 @@
 
         Promise.resolve(0).then(checker);
         requestAnimationFrame(checker);
-    }, {
+    }
+
+    document.addEventListener('touchend', touchEndHandlerForPageUrl , {
         capture: true,
         passive: true
-    })
+    });
+
+
+    document.addEventListener('touchcancel', touchEndHandlerForPageUrl , {
+        capture: true,
+        passive: true
+    });
 
     window.addEventListener('popstate', function(evt) {
 
@@ -502,7 +552,11 @@
                     break;
 
                 case '_10tWW0o-L-5oSH8lCBl9ai':
-                    if(target.matches('._34dVbr5A8khk2N65H9Nl-j ._1nqRVNQ2PyO3vnAwZIISAJ .i-close')) action = 'close-settings';
+                    if(target.matches('._34dVbr5A8khk2N65H9Nl-j ._1nqRVNQ2PyO3vnAwZIISAJ .i-close')) action = isShareBoxOpened() ? 'close-sharebox-cross' : 'close-settings-cross';
+                    break;
+
+                case '_34dVbr5A8khk2N65H9Nl-j':
+                    if(isShareBoxOpened() && target.matches('div._34dVbr5A8khk2N65H9Nl-j')) action = 'close-sharebox-div';
                     break;
 
 
@@ -546,6 +600,29 @@
         console.log("NativeClick", action, elmTarget.className, target.tagName);
     }, true)
 
+    function isShareBoxOpened(){
+
+            let elm = document.querySelector('._27su4Zj_qATokwVdWIbEWB ._1nqRVNQ2PyO3vnAwZIISAJ ._10tWW0o-L-5oSH8lCBl9ai > i.i-close');
+
+            if(elm){
+
+                let parent = elm.closest('._27su4Zj_qATokwVdWIbEWB');
+                if(parent){
+
+                    if(parent.querySelector('textarea[readonly]')  ) {
+
+                    return true;
+                    }
+
+                    }
+
+                    }
+
+                    return false;
+
+
+    }
+
     function domStatus() {
 
 
@@ -573,13 +650,27 @@
         }
 
 
+        let popupViews = obtainPopups();
 
-        // settings
-        if (document.querySelector('._34dVbr5A8khk2N65H9Nl-j ._1nqRVNQ2PyO3vnAwZIISAJ .i-close')) { // ._34dVbr5A8khk2N65H9Nl-j under body
+        if(popupViews && popupViews.length >=1){
 
+            hsObj.popupCount = popupViews.length;
+
+        }
+
+
+        /*
+
+        if(isShareBoxOpened()){
+            // share button box (top right of post)
+            hsObj.shareBoxShown = 1;
+
+        } else if (document.querySelector('._34dVbr5A8khk2N65H9Nl-j ._1nqRVNQ2PyO3vnAwZIISAJ .i-close')) { // ._34dVbr5A8khk2N65H9Nl-j under body
+            // settings
             hsObj.settingsShown = document.querySelectorAll('._34dVbr5A8khk2N65H9Nl-j li').length;
 
         }
+        */
 
         if(document.querySelector('._34dVbr5A8khk2N65H9Nl-j a[href*="/register"]')) { // ._34dVbr5A8khk2N65H9Nl-j under body
 
@@ -649,9 +740,12 @@
 
             touchQT = touchRT;
 
-            let tKey = simpleKeyValuesHash(domStatus());
+            let objDomStatus = domStatus();
+
+            let tKey = simpleKeyValuesHash(objDomStatus);
 
             if (tKey != bKey) {
+
                 //                console.log("tKey1", tKey);
 
 
@@ -659,13 +753,17 @@
                 if (window.history.state && window.history.state.pDs) {
                     sKeyHist = simpleKeyValuesHash(window.history.state.pDs);
                 }
+
+                console.log("tKey", tKey, 'sKeyHist', sKeyHist);
                 if (tKey !== sKeyHist) {
                     let m = Object.assign({}, window.history.state);
-                    m.pDs = domStatus();
+                    m.pDs = objDomStatus;
 
 
                     //                    let spaURL = location.href.replace(/\?(\w+\=[^\=\&]*\&?)+(\#[^\#\s]*)?$/, '');
                     let spaURL = location.pathname;
+
+//                    console.log('pushStateM', objDomStatus.popupCount)
 
                     pushStateM(m, '', spaURL);
                     //                    console.log('T88.pushState-d1');
@@ -677,8 +775,10 @@
 
         } else if (touchQT === touchRT && touchRT + 800 < Date.now()) {
 
+            let objDomStatus = domStatus();
 
-            let tKey = simpleKeyValuesHash(domStatus());
+
+            let tKey = simpleKeyValuesHash(objDomStatus);
 
             if (tKey != bKey) {
                 //                console.log("tKey2", tKey);
@@ -690,7 +790,7 @@
                 if (tKey !== sKeyHist) {
 
                     let m = Object.assign({}, window.history.state);
-                    m.pDs = domStatus();
+                    m.pDs = objDomStatus;
 
                     //                    let spaURL = location.href.replace(/\?(\w+\=[^\=\&]*\&?)+(\#[^\#\s]*)?$/, '');
                     let spaURL = location.pathname;
@@ -1016,6 +1116,14 @@
                 }
             }
         }
+
+        // fix <a href="#">...</a>
+
+        for (const s of document.querySelectorAll('li._2SqBoIdr5sJFLnuXp8xsqy > a[href="#"]:only-child')) {
+            s.href='javascript:';
+        }
+
+
 
 
 

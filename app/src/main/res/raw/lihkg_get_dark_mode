@@ -1,0 +1,16 @@
+function getDarkMode() {
+  const strModesettings = localStorage.modesettings;
+  let objModesettings = null;
+
+  if (typeof strModesettings === 'string') {
+    try {
+      objModesettings = JSON.parse(strModesettings);
+    } catch (e) {}
+  }
+
+  if (objModesettings) {
+    return objModesettings[0].darkMode ? 'true' : 'false';
+  }
+
+  return 'null';
+}

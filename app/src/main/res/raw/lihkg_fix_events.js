@@ -20,7 +20,29 @@
 
     if(!location.hostname.endsWith('lihkg.com')) return;
 
+    let touchAsClick = false;
+
     const preventTouchStart = evt => {
+        touchAsClick = false;
+        if(evt && evt.isTrusted){
+
+            let elm = document.querySelector('._27su4Zj_qATokwVdWIbEWB ._1nqRVNQ2PyO3vnAwZIISAJ ._10tWW0o-L-5oSH8lCBl9ai > i.i-close');
+
+            if(elm){
+
+                let parent = elm.closest('._27su4Zj_qATokwVdWIbEWB');
+                if(parent){
+
+                    if(parent.querySelector('textarea[readonly]') && evt.target.matches('._34dVbr5A8khk2N65H9Nl-j, ._10tWW0o-L-5oSH8lCBl9ai, ._10tWW0o-L-5oSH8lCBl9ai > i.i-close')   ) {
+
+                        touchAsClick = true;
+                    }
+
+                }
+            }
+
+
+        }
         if (window.getSelection().isCollapsed === false) {
             evt.stopPropagation();
             evt.stopImmediatePropagation();
@@ -32,6 +54,26 @@
         passive: false
     });
 
+
+    const touchEndHandler = (evt)=>{
+
+
+        if(touchAsClick && evt.isTrusted){
+            let div = evt.target;
+            setTimeout(()=>{
+                if(document.body.contains(div)){
+                    div.click();
+                }
+            },80);
+        }
+
+
+        touchAsClick = false;
+
+    }
+
+    document.addEventListener('touchend', touchEndHandler, true);
+    document.addEventListener('touchcancel', touchEndHandler, true);
 
     const createNewTouch = (touch, offsetX) => new Touch({
         identifier: Date.now(),
@@ -101,6 +143,7 @@
             touch.clientY = mTouch0.clientY;
         }
 
+
         return touch;
     }
 
@@ -109,7 +152,7 @@
         if (EventTarget.prototype.euLI9) return;
         EventTarget.prototype.euLI9 = EventTarget.prototype.addEventListener;
         EventTarget.prototype.addEventListener = function(type, func, option) {
-            const touchEventTypes = ['touchstart', 'touchmove', 'touchend'];
+            const touchEventTypes = ['touchstart', 'touchmove', 'touchend', 'touchcancel'];
             if (touchEventTypes.includes(type) && option === undefined) {
 
                 if (type === 'touchmove' && (func + "").indexOf(".drawer.") > 4) func.isOpenDrawerFunc = true;
@@ -140,7 +183,7 @@
                     }
 
                     let r = func.call(this, e);
-                    if (type === 'touchend') {
+                    if (type === 'touchend' || type === 'touchcancel') {
                         mTouch0 = null;
                     }
                     return r;

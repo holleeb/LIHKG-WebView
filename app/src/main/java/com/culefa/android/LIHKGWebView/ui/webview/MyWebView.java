@@ -36,6 +36,7 @@ import android.view.KeyCharacterMap;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewConfiguration;
 import android.view.ViewGroup;
 import android.view.inputmethod.BaseInputConnection;
 import android.view.inputmethod.EditorInfo;
@@ -57,6 +58,7 @@ import android.widget.EditText;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.view.MotionEventCompat;
 import androidx.core.view.inputmethod.EditorInfoCompat;
 import androidx.core.view.inputmethod.InputConnectionCompat;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
@@ -90,19 +92,29 @@ public class MyWebView extends AdvancedWebView {
     private boolean isKilled = false;
 
     public MyWebView(Context context) {
-        super(context);
+        super(context); initWebView(context);
     }
 
+
     public MyWebView(Context context, AttributeSet attrs) {
-        super(context, attrs);
+        super(context, attrs);initWebView(context);
     }
 
     public MyWebView(Context context, AttributeSet attrs, int defStyleAttr) {
-        super(context, attrs, defStyleAttr);
+        super(context, attrs, defStyleAttr);initWebView(context);
     }
 
 
+    private int mTouchSlop;
+    private float mLastX;
+    private float mLastY;
+    private boolean mIsScrolling;
 
+    private void initWebView(Context context) {
+
+        ViewConfiguration vc = ViewConfiguration.get(context);
+        mTouchSlop = vc.getScaledTouchSlop();
+    }
 
     public static class TextInputConnection extends BaseInputConnection
     {
@@ -160,6 +172,37 @@ public class MyWebView extends AdvancedWebView {
         } catch (Exception ignored) {
             //
         }
+    }
+
+
+
+    // onInterceptTouchEvent might not be required.
+    // https://developer.android.com/develop/ui/views/touch-and-input/gestures/viewgroup
+
+    @Override
+    public boolean onInterceptTouchEvent(MotionEvent event) {
+        switch (event.getAction()) {
+            case MotionEvent.ACTION_DOWN:
+                mLastX = event.getX();
+                mLastY = event.getY();
+                mIsScrolling = false;
+                break;
+            case MotionEvent.ACTION_MOVE:
+                float dx = Math.abs(event.getX() - mLastX);
+                float dy = Math.abs(event.getY() - mLastY);
+
+                if (dx > mTouchSlop || dy > mTouchSlop || (dx*dx+dy*dy)>mTouchSlop*mTouchSlop ) {
+                    mIsScrolling = true;
+                }
+                break;
+            case MotionEvent.ACTION_UP:
+            case MotionEvent.ACTION_CANCEL:
+                mIsScrolling = false;
+                break;
+        }
+
+        // In general, don't intercept touch events. The child view handles them.
+        return mIsScrolling || super.onInterceptTouchEvent(event);
     }
 
     private long lastScrollTime = 0;
@@ -220,6 +263,8 @@ public class MyWebView extends AdvancedWebView {
 
         }
 
+        long notifyDarkModeRId = 0;
+
         // This method can be called from JavaScript
         @JavascriptInterface
         public void notifyDarkMode(String strDarkMode) {
@@ -227,10 +272,13 @@ public class MyWebView extends AdvancedWebView {
             final boolean darkMode =  strDarkMode.equals("true");
 //            Log.i("WSS", darkMode+"");
 
+
+
             Handler handler = new Handler(Looper.getMainLooper());
             handler.postDelayed(new Runnable() {
                 @Override
                 public void run() {
+
 
 
                     if(mFragment == null || mFragment.getActivity() == null) return;
@@ -264,41 +312,9 @@ public class MyWebView extends AdvancedWebView {
             } catch (NumberFormatException ignored) {
             }
 
-//            Log.i("elementHit",elementHit);
-//
-//            if(uid>=1){
-//                if( "touchstart".equals( kMap.get("action"))){
-//                    Log.i("TTDV", "touchstart");
-//                    touchRecord.put(uid, true);
-//                }else if( "touchend".equals( kMap.get("action"))){
-//                    Log.i("TTDV", "touchend");
-//                    touchRecord.put(uid, false);
-//                    touchRecord.remove(uid);
-//                }
-//
-//            }
 
-
-            boolean kk = false;
-//            if(touchRecord.size()==1){
-//
-//                Log.i("M379",elementHit);
-//                if(uid>=1 && touchRecord.get(uid)!=null ){
-//                    kk= true;
-//                }
-//
-//            }else{
-//                mFragment.webViewContextDomData = null;
-//            }
-
-            if(uid>=1 && "touchstart".equals( kMap.get("action"))){
-
-                kk = true;
-            }else{
-
-                kk = false;
-            }
-            if(kk==true){
+            boolean kk = uid>=1 && "touchstart".equals( kMap.get("action"));
+            if(kk){
 
                 final int pUid = uid;
                 mFragment.webViewContextDomData = new ImageHandler.ContextDomData(){
@@ -348,7 +364,7 @@ public class MyWebView extends AdvancedWebView {
     private float startY = -1;
     private float startX = -1;
     private boolean allowPull = true;
-    public boolean capturePullDown = false;
+//    public boolean capturePullDown = false;
     private final float refreshThreshold = 200;
 
     @SuppressLint("ClickableViewAccessibility")
@@ -573,7 +589,7 @@ public class MyWebView extends AdvancedWebView {
     }
 
 
-    public String readTextFile(Context context, int resourceId) {
+    public String readTextFile(Context context, int resourceId, boolean doTrim) {
         InputStream inputStream = context.getResources().openRawResource(resourceId);
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         byte[] buffer = new byte[1024];
@@ -584,7 +600,9 @@ public class MyWebView extends AdvancedWebView {
             }
             inputStream.close();
             outputStream.close();
-            return outputStream.toString();
+            String result = outputStream.toString();
+            if(doTrim) result = result.trim();
+            return result;
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -658,26 +676,14 @@ public class MyWebView extends AdvancedWebView {
     // some codes from https://www.hidroh.com/2016/05/19/hacking-up-ad-blocker-android/
 
 
+    String strJsSetDarkMode = null;
+
     public void setDarkMode(boolean darkMode ){
 
-        this.evaluateJavascript("javascript: !location.hostname.endsWith('lihkg.com') ? 0 : (function setDarkMode(d) {\n" +
-                "  const strModesettings = localStorage.modesettings;\n" +
-                "  let objModesettings = null;\n" +
-                "\n" +
-                "  if (typeof strModesettings === 'string') {\n" +
-                "    try {\n" +
-                "      objModesettings = JSON.parse(strModesettings);\n" +
-                "    } catch (e) {}\n" +
-                "  }\n" +
-                "\n" +
-                "  if (objModesettings && objModesettings[0]) {\n" +
-                " objModesettings[0].darkMode = d?true:false; \n" +
-                "     localStorage.modesettings = JSON.stringify(objModesettings);\n" +
-                "   if(d) {document.body.dataset.appDm = '';} else {delete document.body.dataset.appDm;}  \n" +
-                "  }\n" +
-                "\n" +
-                "  ;\n" +
-                "})("+darkMode+")", new ValueCallback<String>() {
+        if(strJsSetDarkMode == null) strJsSetDarkMode = readTextFile(mActivity.getApplicationContext(),R.raw.lihkg_set_dark_mode,true);;
+
+
+        this.evaluateJavascript("javascript: !location.hostname.endsWith('lihkg.com') ? 0 : ("+ strJsSetDarkMode +")("+darkMode+")", new ValueCallback<String>() {
             @Override
             public void onReceiveValue(String value) {
 //
@@ -687,6 +693,7 @@ public class MyWebView extends AdvancedWebView {
     }
 
 
+    @SuppressLint("ClickableViewAccessibility")
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         if (event.getAction() == MotionEvent.ACTION_DOWN) {
@@ -708,7 +715,9 @@ public class MyWebView extends AdvancedWebView {
     protected static void evaluateJavascriptX(WebView webview, String script, String uid, ValueCallback<String>
             resultCallback) {
 
-        webview.evaluateJavascript("javascript: !location.hostname.endsWith('lihkg.com')||('"+uid+"' in window)||(window."+ uid +"=(function(){\n" + script + "\n})());", resultCallback);
+        webview.evaluateJavascript("javascript: (()=>!location.hostname.endsWith('lihkg.com')?0:'"+uid+"' in window?2:((window."+ uid +"=(function(){\n" + script + "\n})()),1))();", resultCallback);
+
+//        webview.evaluateJavascript("javascript: !location.hostname.endsWith('lihkg.com')||('"+uid+"' in window)||(window."+ uid +"=(function(){\n" + script + "\n})());", resultCallback);
 
 
     }
@@ -755,11 +764,11 @@ public class MyWebView extends AdvancedWebView {
             return false;
         }
 
-        public SwipeRefreshLayout swipeRefreshLayout;
+//        public SwipeRefreshLayout swipeRefreshLayout;
 
-        public void setSwipeRefreshLayout(SwipeRefreshLayout swipeRefreshLayout) {
-            this.swipeRefreshLayout = swipeRefreshLayout;
-        }
+//        public void setSwipeRefreshLayout(SwipeRefreshLayout swipeRefreshLayout) {
+//            this.swipeRefreshLayout = swipeRefreshLayout;
+//        }
 
 
 
@@ -875,6 +884,13 @@ public class MyWebView extends AdvancedWebView {
         String strUserScript07 = null;
 
 
+        String strJsTidyUpSettings = null;
+        String strJsGetDarkMode = null;
+
+        String strJsNotifyDarkModeChanged= null;
+
+
+
         // reference : https://blog.rosuh.me/web-view-ad-blocker
         @Override
         public void onPageFinished(WebView webview, String url) {
@@ -884,14 +900,16 @@ public class MyWebView extends AdvancedWebView {
             swipeRefreshLayout.setRefreshing(false);
 
 
-            if(strUserScript06 == null) strUserScript06 = readTextFile(mActivity.getApplicationContext(),R.raw.lihkg_fix_events);
+            if(strUserScript06 == null) strUserScript06 = readTextFile(mActivity.getApplicationContext(),R.raw.lihkg_fix_events,true);;
 
             if(strUserScript06 != null && strUserScript06.length() > 12) {
                 String s = strUserScript06;
                 evaluateJavascriptX(webview, s, "tpPw5", new ValueCallback<String>() {
                     @Override
                     public void onReceiveValue(String value) {
-                        Log.i("sText", "userscript 6");
+                        if(value.contains("1")) {
+                            Log.i("sText", "userscript 6");
+                        }
                         //
                     }
                 });
@@ -902,7 +920,7 @@ public class MyWebView extends AdvancedWebView {
 
 
 
-            if(strUserScript05 == null) strUserScript05 = readTextFile(mActivity.getApplicationContext(),R.raw.lihkg_remove_ads);
+            if(strUserScript05 == null) strUserScript05 = readTextFile(mActivity.getApplicationContext(),R.raw.lihkg_remove_ads,true);;
 //                Log.i("sText",s.length()+"");
 
             if(strUserScript05 != null && strUserScript05.length() > 12) {
@@ -911,7 +929,10 @@ public class MyWebView extends AdvancedWebView {
                 evaluateJavascriptX(webview, s, "xfg83S", new ValueCallback<String>() {
                     @Override
                     public void onReceiveValue(String value) {
-                        Log.i("sText", "userscript 5");
+
+                        if(value.contains("1")) {
+                            Log.i("sText", "userscript 5");
+                        }
                         //
                     }
                 });
@@ -929,41 +950,11 @@ public class MyWebView extends AdvancedWebView {
 
 
 
-            webview.evaluateJavascript("javascript: !location.hostname.endsWith('lihkg.com') ? 0 : (function tidyUpModeSettings() {\n" +
-                    "  const strModesettings = localStorage.modesettings;\n" +
-                    "  let objModesettings = null;\n" +
-                    "\n" +
-                    "  if (typeof strModesettings === 'string') {\n" +
-                    "    try {\n" +
-                    "      objModesettings = JSON.parse(strModesettings);\n" +
-                    "    } catch (e) {}\n" +
-                    "  }\n" +
-                    "\n" +
-                    "  let objModesettingsChanged = false;\n" +
-                    "\n" +
-                    "  if (objModesettings !== null && objModesettings && objModesettings[0]) {\n" +
-                    "    let lastIdx = -1;\n" +
-                    "\n" +
-                    "    for (let i = 0; i < 99; i++) {\n" +
-                    "      if (objModesettings[i]) lastIdx = i;\n" +
-                    "    }\n" +
-                    "\n" +
-                    "    if (lastIdx >= 1) {\n" +
-                    "      if ('length' in objModesettings) {\n" +
-                    "        objModesettings = [objModesettings[0]];\n" +
-                    "      } else {\n" +
-                    "        objModesettings = { \"0\": objModesettings[0] };\n" +
-                    "      }\n" +
-                    "\n" +
-                    "      objModesettingsChanged = true;\n" +
-                    "    }\n" +
-                    "    if(objModesettings[0].imageProxy === true){objModesettings[0].imageProxy = false; objModesettingsChanged = true;}\n"+
-                    "\n" +
-                    "    if (objModesettingsChanged) {\n" +
-                    "      localStorage.modesettings = JSON.stringify(objModesettings);\n" +
-                    "    }\n" +
-                    "  }\n" +
-                    "})() ", new ValueCallback<String>() {
+            if(strJsTidyUpSettings == null) strJsTidyUpSettings = readTextFile(mActivity.getApplicationContext(),R.raw.lihkg_tidy_up_settings,true);;
+
+
+
+            webview.evaluateJavascript("javascript: !location.hostname.endsWith('lihkg.com') ? 0 : (" + strJsTidyUpSettings + ")() ", new ValueCallback<String>() {
                 @Override
                 public void onReceiveValue(String s) {
                     Log.i("MyWebView", "Tidy Up localStorage.modesettings");
@@ -971,22 +962,11 @@ public class MyWebView extends AdvancedWebView {
             });
 
 
-            webview.evaluateJavascript("javascrit: !location.hostname.endsWith('lihkg.com') ? 0 : (function getDarkMode() {\n" +
-                    "  const strModesettings = localStorage.modesettings;\n" +
-                    "  let objModesettings = null;\n" +
-                    "\n" +
-                    "  if (typeof strModesettings === 'string') {\n" +
-                    "    try {\n" +
-                    "      objModesettings = JSON.parse(strModesettings);\n" +
-                    "    } catch (e) {}\n" +
-                    "  }\n" +
-                    "\n" +
-                    "  if (objModesettings) {\n" +
-                    "    return objModesettings[0].darkMode ? 'true' : 'false';\n" +
-                    "  }\n" +
-                    "\n" +
-                    "  return 'null';\n" +
-                    "})()", new ValueCallback<String>() {
+            if(strJsGetDarkMode == null) strJsGetDarkMode = readTextFile(mActivity.getApplicationContext(),R.raw.lihkg_get_dark_mode,true);;
+
+
+
+            webview.evaluateJavascript("javascript: !location.hostname.endsWith('lihkg.com') ? 0 : (" + strJsGetDarkMode + ")()", new ValueCallback<String>() {
                 @Override
                 public void onReceiveValue(String value) {
 
@@ -1007,7 +987,7 @@ public class MyWebView extends AdvancedWebView {
                 }
             });
 
-            if(strUserCSS == null) strUserCSS = readTextFile(mActivity.getApplicationContext(),R.raw.lihkg_styles);
+            if(strUserCSS == null) strUserCSS = readTextFile(mActivity.getApplicationContext(),R.raw.lihkg_styles,true);;
 //                Log.i("sText",s.length()+"");
 
             if(strUserCSS != null && strUserCSS.length() > 12) {
@@ -1030,7 +1010,7 @@ public class MyWebView extends AdvancedWebView {
 
 
 
-            if(strUserScript01 == null) strUserScript01 = readTextFile(mActivity.getApplicationContext(),R.raw.lihkg_label_users_user);
+            if(strUserScript01 == null) strUserScript01 = readTextFile(mActivity.getApplicationContext(),R.raw.lihkg_label_users_user,true);;
 //                Log.i("sText",s.length()+"");
 
             if(strUserScript01 != null && strUserScript01.length() > 12) {
@@ -1039,13 +1019,16 @@ public class MyWebView extends AdvancedWebView {
                 evaluateJavascriptX(webview, s, "xfg41S", new ValueCallback<String>() {
                     @Override
                     public void onReceiveValue(String value) {
-                        Log.i("sText", "userscript 1");
+
+                        if(value.contains("1")) {
+                            Log.i("sText", "userscript 1");
+                        }
                         //
                     }
                 });
             }
 
-            if(strUserScript02 == null) strUserScript02 = readTextFile(mActivity.getApplicationContext(),R.raw.lihkg_latex_user);
+            if(strUserScript02 == null) strUserScript02 = readTextFile(mActivity.getApplicationContext(),R.raw.lihkg_latex_user,true);;
 
             if(strUserScript02 != null && strUserScript02.length() > 12) {
                 String s = strUserScript02;
@@ -1053,14 +1036,17 @@ public class MyWebView extends AdvancedWebView {
                 evaluateJavascriptX(webview, s, "vAr4I", new ValueCallback<String>() {
                     @Override
                     public void onReceiveValue(String value) {
-                        Log.i("sText", "userscript 2");
+
+                        if(value.contains("1")) {
+                            Log.i("sText", "userscript 2");
+                        }
                         //
                     }
                 });
             }
 
 
-            if(strUserScript03 == null) strUserScript03 = readTextFile(mActivity.getApplicationContext(),R.raw.lihkg_json_parse);
+            if(strUserScript03 == null) strUserScript03 = readTextFile(mActivity.getApplicationContext(),R.raw.lihkg_json_parse,true);;
 
             if(strUserScript03 != null && strUserScript03.length() > 12) {
                 String s = strUserScript03;
@@ -1068,14 +1054,17 @@ public class MyWebView extends AdvancedWebView {
                 evaluateJavascriptX(webview, s, "tpPi2", new ValueCallback<String>() {
                     @Override
                     public void onReceiveValue(String value) {
-                        Log.i("sText", "userscript 3");
+
+                        if(value.contains("1")) {
+                            Log.i("sText", "userscript 3");
+                        }
                         //
                     }
                 });
             }
 
 
-            if(strUserScript04 == null) strUserScript04 = readTextFile(mActivity.getApplicationContext(),R.raw.lihkg_fix_pageurl);
+            if(strUserScript04 == null) strUserScript04 = readTextFile(mActivity.getApplicationContext(),R.raw.lihkg_fix_pageurl,true);;
 
             if(strUserScript04 != null && strUserScript04.length() > 12) {
                 String s = strUserScript04;
@@ -1083,7 +1072,10 @@ public class MyWebView extends AdvancedWebView {
                 evaluateJavascriptX(webview, s, "tpPi8", new ValueCallback<String>() {
                     @Override
                     public void onReceiveValue(String value) {
-                        Log.i("sText", "userscript 4");
+
+                        if(value.contains("1")) {
+                            Log.i("sText", "userscript 4");
+                        }
                         //
                     }
                 });
@@ -1091,38 +1083,11 @@ public class MyWebView extends AdvancedWebView {
 
 
 
-            webview.evaluateJavascript("javascript:  !location.hostname.endsWith('lihkg.com') ? 0 : (function notifyDarkModeChange() {\n" +
-                    "    if (typeof xec2D === \"undefined\" || !xec2D || !xec2D.notifyDarkMode) {\n" +
-                    "      return;\n" +
-                    "    }\n" +
-                    "    if (window.xec2E) {\n" +
-                    "      return;\n" +
-                    "    }\n" +
-                    "    \n" +
-                    "    window.xec2E = true;\n" +
-                    "  \n" +
-                    "    // Select the target node\n" +
-                    "    const targetNode = document.body;\n" +
-                    "  \n" +
-                    "    // Create a new instance of MutationObserver\n" +
-                    "    const observer = new MutationObserver((mutationsList) => {\n" +
-                    "      // Loop through the mutations list\n" +
-                    "      for (let mutation of mutationsList) {\n" +
-                    "        if (mutation.type === \"attributes\" && mutation.attributeName === \"data-app-dm\") {\n" +
-                    "          if (mutation.target && mutation.target.nodeType === 1) {\n" +
-                    "            // The 'data-app-dm' attribute has been changed on the target element\n" +
-                    "            xec2D.notifyDarkMode(mutation.target.hasAttribute(\"data-app-dm\"));\n" +
-                    "          }\n" +
-                    "        }\n" +
-                    "      }\n" +
-                    "    });\n" +
-                    "  \n" +
-                    "    // Configuration options for the observer\n" +
-                    "    const config = { attributes: true, attributeFilter: [\"data-app-dm\"] };\n" +
-                    "  \n" +
-                    "    // Start observing the target node for attribute changes\n" +
-                    "    observer.observe(targetNode, config);\n" +
-                    "  })() ", new ValueCallback<String>() {
+
+            if(strJsNotifyDarkModeChanged == null) strJsNotifyDarkModeChanged = readTextFile(mActivity.getApplicationContext(),R.raw.lihkg_notify_dark_mode_changed,true);;
+
+
+            webview.evaluateJavascript("javascript:  !location.hostname.endsWith('lihkg.com') ? 0 : (" + strJsNotifyDarkModeChanged + ")() ", new ValueCallback<String>() {
                 @Override
                 public void onReceiveValue(String s) {
 //                        Log.i("MyWebView", "Tidy Up localStorage.modesettings");
@@ -1135,7 +1100,7 @@ public class MyWebView extends AdvancedWebView {
 
 
 
-            if(strUserScript07 == null) strUserScript07 = readTextFile(mActivity.getApplicationContext(),R.raw.webview_contextmenu);
+            if(strUserScript07 == null) strUserScript07 = readTextFile(mActivity.getApplicationContext(),R.raw.webview_contextmenu,true);;
 //                Log.i("sText",s.length()+"");
 
             if(strUserScript07 != null && strUserScript07.length() > 12) {
@@ -1144,7 +1109,10 @@ public class MyWebView extends AdvancedWebView {
                 evaluateJavascriptX(webview, s, "mek32", new ValueCallback<String>() {
                     @Override
                     public void onReceiveValue(String value) {
-                        Log.i("sText", "userscript 7");
+
+                        if(value.contains("1")) {
+                            Log.i("sText", "userscript 7");
+                        }
                         //
                     }
                 });

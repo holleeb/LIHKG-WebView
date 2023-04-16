@@ -166,6 +166,7 @@ body ._3ExaynSI6tUp5h1U50MHtI ._3imUf8qB9LmLpk_t5PjDm4>div:first-child+div:last-
 
 
 /* disable imageProxy (unable to load in webview??) */
+/*
 div#imageProxy._2drZNBHt6Bl5RefoNQnRuQ[class]{
     pointer-events: none !important;
     user-select: none !important;
@@ -175,6 +176,7 @@ div#imageProxy._2drZNBHt6Bl5RefoNQnRuQ[class] > ._1vjVW2rbZdfog0-OiZiY_B {
     left: 5% !important;
     background: #282222;
 }
+*/
 
 
 /* special */
@@ -244,3 +246,22 @@ div[class] > div:only-child:not([class]):not([style]) > ins:only-child:empty {
 
     }
 
+
+/* fix icon buttons in share box (share button in post top right corner) */
+._3K55SP6hi6tAFsbqv-pOO6 ._19hDkdhSXmnPJz0bt8qzvP{
+    display:inline-flex;
+
+    align-items: center;
+    justify-items: center;
+    align-content: center;
+    justify-content: center;
+}
+
+
+
+/* fix share button active style - mobile don't need hover */
+body ._1gUiNP0DXim6f5CvBTx7T7>span:hover,
+body .Po8iCa0b9ZUovZ9Ofa_Gk:hover,
+body .eaWAxpidGy5I-mbexmmZy:hover {
+    background-color: rgba(128,128,128,0.0);
+}
