@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="12dp">
+
+    <Button
+        android:id="@+id/headerLeft"
+        android:layout_width="44dp"
+        android:layout_height="48dp"
+        android:fontFamily="monospace"
+        android:text="I"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/headerLine1"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="headerLine1"
+        android:textColor="@color/black"
+        android:textSize="10sp"
+        app:layout_constraintStart_toEndOf="@+id/headerLeft"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/headerLine2"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="headerLine2"
+        android:textColor="@color/black"
+        android:textSize="10sp"
+        app:layout_constraintStart_toEndOf="@+id/headerLeft"
+        app:layout_constraintTop_toBottomOf="@+id/headerLine1" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

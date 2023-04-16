@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <color name="lihkg_text_color">#CCC6C0</color>
+    <color name="lihkg_background_color">#000000</color>
+    <color name="navbar_background_color">#000000</color>
+</resources>
