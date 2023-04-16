@@ -10,6 +10,11 @@
 # Java class files
 *.class
 
+# Grandle Scripts
+*.gradle
+*.properties
+*.pro
+
 # Generated files
 bin/
 gen/
