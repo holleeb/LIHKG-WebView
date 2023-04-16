@@ -79,9 +79,9 @@ import java.util.Locale;
 
 public class MainFragment extends Fragment implements MyWebView.Listener {
 
-    MyWebView mWebView = null;
-    public Boolean overrideDarkMode = null;
-    public Boolean currentDarkMode = null;
+    public MyWebView mWebView = null;
+//    public Boolean overrideDarkMode = null;
+//    public Boolean currentDarkMode = null;
 
     public static MainFragment newInstance() {
         return new MainFragment();
@@ -175,7 +175,7 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
 //        }
     }
 
-    public ViewGroup mWebViewParent = null;
+//    public ViewGroup mWebViewParent = null;
 
     @Override
     public void onStop() {
@@ -183,12 +183,15 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
 
 //        mWebView = null;
 
-        this.requireView().postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                killWebView();
-            }
-        },300);
+//        this.requireView().postDelayed(new Runnable() {
+//            @Override
+//            public void run() {
+//                killWebView();
+//            }
+//        },300);
+
+
+
 
 //        if(mWebViewParent == null && mWebView != null) {
 //            mWebView.setEnabled(false);
@@ -214,6 +217,8 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
 
     @SuppressLint("SetJavaScriptEnabled")
     public void setupWebViewSettings(){
+
+        if(getActivity() == null || mWebView == null) return;
 
 
 
@@ -303,6 +308,7 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
 
+        if(getActivity() == null) return null;
 
         requireActivity().getWindow().setFlags(
                 WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
@@ -324,6 +330,15 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
         progressBar = (ProgressBar) view.findViewById(R.id.progress_bar);
 
 
+//        mWebView.restoreState( ((MainActivity) requireActivity()).webViewBundle);
+//
+//        try{
+//
+//            Log.i("SSX", mWebView.getUrl()+"");
+//        }catch (Throwable e){
+//
+//        }
+
 //        requireActivity().getOnBackPressedDispatcher().addCallback(new OnBackPressedCallback(true) {
 //            @Override
 //            public void handleOnBackPressed() {
@@ -335,8 +350,9 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
             requireActivity().getOnBackInvokedDispatcher().registerOnBackInvokedCallback(OnBackInvokedDispatcher.PRIORITY_DEFAULT, new OnBackInvokedCallback() {
                 @Override
                 public void onBackInvoked() {
-                    if(mWebView.canGoBack()) mWebView.goBack();
-                    else requireActivity().onBackPressed();
+
+                    if(mWebView!=null && mWebView.canGoBack()) mWebView.goBack();
+                    else if(getActivity() != null) requireActivity().onBackPressed();
                 }
             });
         }
@@ -352,6 +368,8 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
         swipeRefreshLayout.setOnChildScrollUpCallback(new SwipeRefreshLayout.OnChildScrollUpCallback() {
             @Override
             public boolean canChildScrollUp(@NonNull SwipeRefreshLayout parent, @Nullable View child) {
+
+                if(getActivity() == null || mWebView == null) return false;
 //                if(mWebView == null) return false;
 ////                Log.i("canChildScrollUp", mWebView.capturePullDown+"");
 ////                if(!mWebView.capturePullDown) return false;
@@ -404,6 +422,8 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
         view.post(new Runnable() {
             @Override
             public void run() {
+
+                if(getActivity() == null || mWebView == null) return;
                 refreshColors();
             }
         });
@@ -436,21 +456,25 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
     @Override
     public void onDestroyView() {
         Log.i("LIHKGWebView","onDestroyView");
+
+        if(mWebView!=null) {
+            mWebView.destroy();
+            mWebView = null;
+        }
+
         super.onDestroyView();
     }
 
     @Override
     public void onDestroy() {
         Log.i("LIHKGWebView","onDestroy");
-        if(mWebView!=null) {
-            mWebView.destroy();
-            mWebView = null;
-        }
         super.onDestroy();
     }
 
     @Override
     public void onPageStarted(String url, Bitmap favicon) {
+
+        if(getActivity() == null) return;
 
         if(progressBar != null)
         progressBar.setVisibility(View.VISIBLE);
@@ -473,6 +497,8 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
     @Override
     public void onPageFinished(String url) {
 
+        if(getActivity() == null) return;
+
 //        Log.i("onPageFinished",url);
         getViewModel().webViewURL = url;
 
@@ -483,16 +509,25 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
     @Override
     public void onProgressChanged(WebView view, int newProgress) {
 
+        if(getActivity() == null) return;
+
         if(progressBar != null) {
             progressBar.setProgress(newProgress);
         }
     }
 
     @Override
-    public void onPageError(int errorCode, String description, String failingUrl) { }
+    public void onPageError(int errorCode, String description, String failingUrl) {
+
+        if(getActivity() == null) return;
+
+    }
 
     @Override
     public void onDownloadRequested(String url, String mimetype, long contentLength, String contentDisposition, String userAgent) {
+
+
+        if(getActivity() == null) return;
 
         int PERMISSION_REQUEST_CODE = 1;
 
@@ -548,7 +583,12 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
     }
 
     @Override
-    public void onExternalPageRequest(String url) { }
+    public void onExternalPageRequest(String url) {
+
+
+        if(getActivity() == null) return;
+
+    }
 
     /* ----- */
 
@@ -563,6 +603,7 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
         final Runnable updateMessage = new Runnable() {
             @Override
             public void run() {
+                if(getActivity() == null || mMessage == null || mWebView == null) return;
                 long usedMemory = runtime.totalMemory() - runtime.freeMemory();
                 if (Math.abs(usedMemory - lastUsedMemoryArr[0]) >= memoryThreshold) {
                     lastUsedMemoryArr[0] = usedMemory;
@@ -833,8 +874,13 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
         }
     }
 
+    public boolean fragmentDead = false;
+
     public void killWebView() {
-        mWebView = null;
+        if(mWebView != null) {
+            mWebView.destroy();
+            mWebView = null;
+        }
 
         Handler handler = new Handler(Looper.getMainLooper());
         handler.postDelayed(new Runnable() {
@@ -843,11 +889,15 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
 
                 try{
 
+                    if(getActivity() == null) return;
+
                     MainActivity mActivity = (MainActivity) requireActivity();
                     mActivity.getSupportFragmentManager()
                             .beginTransaction()
                             .remove(MainFragment .this)
                             .commitAllowingStateLoss();
+
+                    fragmentDead = true;
 
                     mActivity.fragmentKilled();
                 }catch (Throwable ignored){
@@ -859,4 +909,6 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
         },1);
 
     }
+
+
 }

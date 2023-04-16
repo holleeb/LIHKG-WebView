@@ -63,6 +63,7 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import androidx.webkit.WebSettingsCompat;
 import androidx.webkit.WebViewFeature;
 
+import com.culefa.android.LIHKGWebView.MainActivity;
 import com.culefa.android.LIHKGWebView.R;
 import com.culefa.android.LIHKGWebView.ui.main.ImageHandler;
 import com.culefa.android.LIHKGWebView.ui.main.MainFragment;
@@ -83,6 +84,8 @@ import java.util.Set;
 import im.delight.android.webview.AdvancedWebView;
 
 public class MyWebView extends AdvancedWebView {
+
+    static final String CONTROLLER_JS_INTERFACE = "xec2D";
 
     private boolean isKilled = false;
 
@@ -205,6 +208,7 @@ public class MyWebView extends AdvancedWebView {
 
         @JavascriptInterface
         public void stopScroll(){
+            if(mFragment==null || mFragment.fragmentDead) return;
             stopScrollTime = System.currentTimeMillis();
 
 
@@ -214,6 +218,7 @@ public class MyWebView extends AdvancedWebView {
         // This method can be called from JavaScript
         @JavascriptInterface
         public void notifyDarkMode(String strDarkMode) {
+            if(mFragment==null || mFragment.fragmentDead) return;
             final boolean darkMode =  strDarkMode.equals("true");
 //            Log.i("WSS", darkMode+"");
 
@@ -223,13 +228,15 @@ public class MyWebView extends AdvancedWebView {
                 public void run() {
 
 
+                    if(mFragment == null || mFragment.getActivity() == null) return;
+
                     if (darkMode) {
-                        mFragment.overrideDarkMode = true;
+//                        mFragment.overrideDarkMode = true;
                         mFragment.getViewModel().setDarkMode(true);
                         mFragment.setDarkMode(true, true);
                     }else {
 
-                        mFragment.overrideDarkMode = false;
+//                        mFragment.overrideDarkMode = false;
                         mFragment.getViewModel().setDarkMode(false);
                         mFragment.setDarkMode(false, true);
                     }
@@ -242,6 +249,7 @@ public class MyWebView extends AdvancedWebView {
 
         @JavascriptInterface
         public void notifyContextMenu(String elementHit){
+            if(mFragment==null || mFragment.fragmentDead) return;
 
             HashMap<String, String> kMap = createHashMap(elementHit);
             int uid = -1;
@@ -314,10 +322,18 @@ public class MyWebView extends AdvancedWebView {
 
         @JavascriptInterface
         public void stateChanged(String currentUrl){
+            if(mFragment==null || mFragment.fragmentDead || mFragment.getActivity() == null) return;
 
             Log.i("jsIt.stateChanged", currentUrl);
 
             mFragment.getViewModel().webViewURL = currentUrl;
+//            postDelayed(new Runnable() {
+//                @Override
+//                public void run() {
+//
+//                    MyWebView.this.saveState(((MainActivity)  mFragment.requireActivity()).webViewBundle);
+//                }
+//            },1);
 
         }
 
@@ -400,7 +416,7 @@ public class MyWebView extends AdvancedWebView {
         MyJavaScriptInterface jsInterface = new MyJavaScriptInterface(context);
 //        Log.i("SS","SS11");
 //        if(Build.VERSION.SDK_INT>17) {
-            this.addJavascriptInterface(jsInterface, "xec2D");
+            this.addJavascriptInterface(jsInterface, CONTROLLER_JS_INTERFACE);
 //        }
 
 //        if(WebViewFeature.isFeatureSupported(WebViewFeature.FORCE_DARK)) {
@@ -487,15 +503,35 @@ public class MyWebView extends AdvancedWebView {
     public void destroy() {
         if(!this.isKilled) {
             this.isKilled = true;
+
+//            try {
+//                ViewGroup webViewContainer = (ViewGroup) this.getParent();
+//                if (webViewContainer != null) webViewContainer.removeView(this);
+//            }catch (Throwable ignored){
+//
+//            }
+
             try {
                 this.stopLoading();
             }catch (Throwable ignored){
 
             }
 
+
             try {
+                this.setTag(null);
                 this.clearCache(true);
                 this.clearHistory();
+                this.removeAllViews();
+
+            }catch (Throwable ignored){
+
+            }
+
+
+
+            try {
+                this.removeJavascriptInterface(CONTROLLER_JS_INTERFACE);
             }catch (Throwable ignored){
 
             }
@@ -511,8 +547,8 @@ public class MyWebView extends AdvancedWebView {
             }
 
             try {
-            ViewGroup container = (ViewGroup) this.getParent();
-            if(container != null) container.removeView(this);
+                ViewGroup container = (ViewGroup) this.getParent();
+                if(container != null) container.removeView(this);
 
             }catch (Throwable ignored){
 
@@ -629,7 +665,7 @@ public class MyWebView extends AdvancedWebView {
                 "    } catch (e) {}\n" +
                 "  }\n" +
                 "\n" +
-                "  if (objModesettings) {\n" +
+                "  if (objModesettings && objModesettings[0]) {\n" +
                 " objModesettings[0].darkMode = d?true:false; \n" +
                 "     localStorage.modesettings = JSON.stringify(objModesettings);\n" +
                 "   if(d) {document.body.dataset.appDm = '';} else {delete document.body.dataset.appDm;}  \n" +
@@ -688,10 +724,11 @@ public class MyWebView extends AdvancedWebView {
                     MyWebView mWebView = MyWebView.this;
 
                     if (mWebView != null && !isKilled) {
-                        ViewGroup webViewContainer = (ViewGroup) mWebView.getParent();
-                        if(webViewContainer != null) webViewContainer.removeView(mWebView);
-                        mWebView.destroy();
-                        mFragment.killWebView();
+                        if(mFragment != null && !mFragment.fragmentDead && mFragment.mWebView != null){
+                            mFragment.killWebView();
+                        }else {
+                            mWebView.destroy();
+                        }
                     }
 
                     // By this point, the instance variable "mWebView" is guaranteed
@@ -899,7 +936,7 @@ public class MyWebView extends AdvancedWebView {
                     "\n" +
                     "  let objModesettingsChanged = false;\n" +
                     "\n" +
-                    "  if (objModesettings !== null) {\n" +
+                    "  if (objModesettings !== null && objModesettings && objModesettings[0]) {\n" +
                     "    let lastIdx = -1;\n" +
                     "\n" +
                     "    for (let i = 0; i < 99; i++) {\n" +
@@ -952,11 +989,11 @@ public class MyWebView extends AdvancedWebView {
                     if(mFragment != null) {
 //                            Log.i("WW", value);
                         if (value.equals("true")) {
-                            mFragment.overrideDarkMode = true;
+//                            mFragment.overrideDarkMode = true;
                             mFragment.getViewModel().setDarkMode(true);
                             mFragment.setDarkMode(true, true);
                         } else if (value.equals("false")) {
-                            mFragment.overrideDarkMode = false;
+//                            mFragment.overrideDarkMode = false;
                             mFragment.getViewModel().setDarkMode(false);
                             mFragment.setDarkMode(false, true);
                         }
@@ -1050,7 +1087,7 @@ public class MyWebView extends AdvancedWebView {
 
 
             webview.evaluateJavascript("javascript:  !location.hostname.endsWith('lihkg.com') ? 0 : (function notifyDarkModeChange() {\n" +
-                    "    if (typeof xec2D === \"undefined\") {\n" +
+                    "    if (typeof xec2D === \"undefined\" || !xec2D || !xec2D.notifyDarkMode) {\n" +
                     "      return;\n" +
                     "    }\n" +
                     "    if (window.xec2E) {\n" +
@@ -1140,6 +1177,7 @@ public class MyWebView extends AdvancedWebView {
         // Load the file into the WebView
         loadDataWithBaseURL(null, "<img src=\"" + uri.toString() + "\">", "text/html", "utf-8", null);
     }
+
 
 
 

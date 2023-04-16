@@ -42,6 +42,8 @@ import com.culefa.android.LIHKGWebView.ui.webview.MyWebView;
 
 public class MainActivity extends AppCompatActivity {
 
+    public Bundle webViewBundle = new Bundle();
+
     public String requestedUrl = null;
     public MainViewModel mViewModel = null;
 
@@ -84,6 +86,8 @@ public class MainActivity extends AppCompatActivity {
                 WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED);
         setContentView(R.layout.activity_main);
         if (savedInstanceState == null) {
+
+            isFragmentKilled = false;
             replaceToNewFragment(getSupportFragmentManager());
         }
 
@@ -209,5 +213,32 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         Log.i("MainActivity","onResume");
+    }
+
+
+    @Override
+    public void onDetachedFromWindow() {
+        super.onDetachedFromWindow();
+        Log.i("MainActivity","onDetachedFromWindow");
+
+        FragmentManager fm = getSupportFragmentManager();
+        int nosOfFragments = fm.getFragments().size();
+        if(!isFragmentKilled && nosOfFragments == 1 ){
+            try {
+                MainFragment mainFragment = (MainFragment) fm.getFragments().get(0);
+                mainFragment.killWebView();
+            }catch (Throwable ignored){
+
+            }
+        }
+    }
+
+    @Override
+    public void onLowMemory() {
+        super.onLowMemory();
+
+        // MyWebView mWebView = (MyWebView) findViewById(R.id.webview);
+
+        Log.i("MainActivity","onLowMemory");
     }
 }
