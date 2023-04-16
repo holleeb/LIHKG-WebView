@@ -334,7 +334,7 @@
             }
         }
 
-        console.log('statechanged', currentState, prevState, replacedState, currentUrl, prevUrl, replacedUrl);
+//        console.log('statechanged', currentState, prevState, replacedState, currentUrl, prevUrl, replacedUrl);
 
     }
 
