@@ -541,7 +541,7 @@
         let action = '';
         for(const className of elmTarget.classList){
 
-            switch(elmTarget.className){
+            switch(className){
 
                 case 'qS4Iosr432bIbXcjtpG0p': //
                     if(target.matches('button[data-close-region]')) action = 'close-media-archive-cross';
@@ -552,31 +552,23 @@
                     break;
 
                 case '_10tWW0o-L-5oSH8lCBl9ai':
-                    if(target.matches('._34dVbr5A8khk2N65H9Nl-j ._1nqRVNQ2PyO3vnAwZIISAJ .i-close')) action = isShareBoxOpened() ? 'close-sharebox-cross' : 'close-settings-cross';
+                    if(target.matches('div._34dVbr5A8khk2N65H9Nl-j.lihkg-popup-view ._1nqRVNQ2PyO3vnAwZIISAJ .i-close')) action = 'close-popup-cross';
                     break;
 
                 case '_34dVbr5A8khk2N65H9Nl-j':
-                    if(isShareBoxOpened() && target.matches('div._34dVbr5A8khk2N65H9Nl-j')) action = 'close-sharebox-div';
-                    break;
-
-
-                case '_34dVbr5A8khk2N65H9Nl-j':
-                    if(target.matches('._34dVbr5A8khk2N65H9Nl-j') && document.querySelector('._34dVbr5A8khk2N65H9Nl-j a[href*="/register"]')) action = 'close-register-popup';
+                    if(target.matches('div._34dVbr5A8khk2N65H9Nl-j.lihkg-popup-view')) action = 'close-popup-div';
                     break;
 
                 case '_3ENsL6YTH5utnKciHKGFd_':
-
                     if(target.matches('body > div[data-body-portal] ._15Y0ebHstpjSjX2xCZCZ8U ._3ENsL6YTH5utnKciHKGFd_')) action = 'close-pinned-reply-div';
                     break;
 
                 case 'zcEinSkC-o0d0G7_NVOA8':
-
                     if(target.matches('body > div[data-body-portal] ._15Y0ebHstpjSjX2xCZCZ8U .zcEinSkC-o0d0G7_NVOA8 i.i-close')) action = 'close-nested-reply-cross';
                     break;
 
 
                 case 'kuYE8juwPfVTS-qncq1Cp':
-
                     if(target.matches('.qS4Iosr432bIbXcjtpG0p div.kuYE8juwPfVTS-qncq1Cp[data-close-region]')) action =  'close-media-archive-div';
                     break;
 
