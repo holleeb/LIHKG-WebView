@@ -48,6 +48,9 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.util.AttributeSet;
 import android.webkit.WebView;
+
+import androidx.webkit.WebViewClientCompat;
+
 import java.util.MissingResourceException;
 import java.util.Locale;
 import java.util.LinkedList;
@@ -93,6 +96,7 @@ public class AdvancedWebView extends WebView {
     protected String mUploadableFileTypes = "*/*";
     protected final Map<String, String> mHttpHeaders = new HashMap<String, String>();
 
+
     public AdvancedWebView(Context context) {
         super(context);
         init(context);
@@ -107,6 +111,8 @@ public class AdvancedWebView extends WebView {
         super(context, attrs, defStyleAttr);
         init(context);
     }
+
+
 
     public void setListener(final Activity activity, final Listener listener) {
         setListener(activity, listener, REQUEST_CODE_FILE_PICKER);
@@ -235,11 +241,14 @@ public class AdvancedWebView extends WebView {
             super.onResume();
         }
         resumeTimers();
+
+        Log.i("WebView", "resumeTimers");
     }
 
     @SuppressLint("NewApi")
     @SuppressWarnings("all")
     public void onPause() {
+        Log.i("WebView", "pauseTimers");
         pauseTimers();
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
             super.onPause();
@@ -328,48 +337,48 @@ public class AdvancedWebView extends WebView {
         mHttpHeaders.put(name, value);
     }
 
-    /**
-     * Removes one of the HTTP headers that have previously been added via `addHttpHeader()`
-     *
-     * If you want to unset a pre-defined header, set it to an empty string with `addHttpHeader()` instead
-     *
-     * The `WebView` implementation may in some cases overwrite headers that you set or unset
-     *
-     * @param name the name of the HTTP header to remove
-     */
-    public void removeHttpHeader(final String name) {
-        mHttpHeaders.remove(name);
-    }
+//    /**
+//     * Removes one of the HTTP headers that have previously been added via `addHttpHeader()`
+//     *
+//     * If you want to unset a pre-defined header, set it to an empty string with `addHttpHeader()` instead
+//     *
+//     * The `WebView` implementation may in some cases overwrite headers that you set or unset
+//     *
+//     * @param name the name of the HTTP header to remove
+//     */
+//    public void removeHttpHeader(final String name) {
+//        mHttpHeaders.remove(name);
+//    }
+//
+//    public void addPermittedHostname(String hostname) {
+//        mPermittedHostnames.add(hostname);
+//    }
+//
+//    public void addPermittedHostnames(Collection<? extends String> collection) {
+//        mPermittedHostnames.addAll(collection);
+//    }
+//
+//    public List<String> getPermittedHostnames() {
+//        return mPermittedHostnames;
+//    }
+//
+//    public void removePermittedHostname(String hostname) {
+//        mPermittedHostnames.remove(hostname);
+//    }
+//
+//    public void clearPermittedHostnames() {
+//        mPermittedHostnames.clear();
+//    }
 
-    public void addPermittedHostname(String hostname) {
-        mPermittedHostnames.add(hostname);
-    }
-
-    public void addPermittedHostnames(Collection<? extends String> collection) {
-        mPermittedHostnames.addAll(collection);
-    }
-
-    public List<String> getPermittedHostnames() {
-        return mPermittedHostnames;
-    }
-
-    public void removePermittedHostname(String hostname) {
-        mPermittedHostnames.remove(hostname);
-    }
-
-    public void clearPermittedHostnames() {
-        mPermittedHostnames.clear();
-    }
-
-    public boolean onBackPressed() {
-        if (canGoBack()) {
-            goBack();
-            return false;
-        }
-        else {
-            return true;
-        }
-    }
+//    public boolean onBackPressed() {
+//        if (canGoBack()) {
+//            goBack();
+//            return false;
+//        }
+//        else {
+//            return true;
+//        }
+//    }
 
     @SuppressLint("NewApi")
     protected static void setAllowAccessFromFileUrls(final WebSettings webSettings, final boolean allowed) {
@@ -379,10 +388,10 @@ public class AdvancedWebView extends WebView {
         }
     }
 
-    @SuppressWarnings("static-method")
-    public void setCookiesEnabled(final boolean enabled) {
-        CookieManager.getInstance().setAcceptCookie(enabled);
-    }
+//    @SuppressWarnings("static-method")
+//    public void setCookiesEnabled(final boolean enabled) {
+//        CookieManager.getInstance().setAcceptCookie(enabled);
+//    }
 
     @SuppressLint("NewApi")
     public void setThirdPartyCookiesEnabled(final boolean enabled) {
@@ -403,25 +412,25 @@ public class AdvancedWebView extends WebView {
 //        }
 //    }
 
-    public void setDesktopMode(final boolean enabled) {
-        final WebSettings webSettings = getSettings();
+//    public void setDesktopMode(final boolean enabled) {
+//        final WebSettings webSettings = getSettings();
+//
+//        final String newUserAgent;
+//        if (enabled) {
+//            newUserAgent = webSettings.getUserAgentString().replace("Mobile", "eliboM").replace("Android", "diordnA");
+//        }
+//        else {
+//            newUserAgent = webSettings.getUserAgentString().replace("eliboM", "Mobile").replace("diordnA", "Android");
+//        }
+//
+//        webSettings.setUserAgentString(newUserAgent);
+//        webSettings.setUseWideViewPort(enabled);
+//        webSettings.setLoadWithOverviewMode(enabled);
+//        webSettings.setSupportZoom(enabled);
+//        webSettings.setBuiltInZoomControls(enabled);
+//    }
 
-        final String newUserAgent;
-        if (enabled) {
-            newUserAgent = webSettings.getUserAgentString().replace("Mobile", "eliboM").replace("Android", "diordnA");
-        }
-        else {
-            newUserAgent = webSettings.getUserAgentString().replace("eliboM", "Mobile").replace("diordnA", "Android");
-        }
-
-        webSettings.setUserAgentString(newUserAgent);
-        webSettings.setUseWideViewPort(enabled);
-        webSettings.setLoadWithOverviewMode(enabled);
-        webSettings.setSupportZoom(enabled);
-        webSettings.setBuiltInZoomControls(enabled);
-    }
-
-    public class AWebViewClient extends WebViewClient {
+    public class AWebViewClient extends WebViewClientCompat {
 
         @Override
         public void onPageStarted(WebView view, String url, Bitmap favicon) {
@@ -459,17 +468,18 @@ public class AdvancedWebView extends WebView {
             }
         }
 
+        @SuppressLint("NewApi")
         @Override
         public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
-                String url = request.getUrl().toString();
 
-                if(checkByURL(view, url)){
-                    return true;
-                }
+            String url = request.getUrl().toString();
 
+            if (checkByURL(view, url)) {
+                return true;
             }
+
             return super.shouldOverrideUrlLoading(view, request);
+
         }
 
 
@@ -1049,22 +1059,33 @@ public class AdvancedWebView extends WebView {
 
         setSaveEnabled(true);
 
+        final WebSettings webSettings = getSettings();
+
+        setInitialScale(100);
+        webSettings.setLoadWithOverviewMode(true);
+        webSettings.setUseWideViewPort(true);
+
+        webSettings.setJavaScriptEnabled(true);
+        webSettings.setLoadsImagesAutomatically(true);
+        webSettings.setDomStorageEnabled(true);
+        webSettings.setSupportZoom(true);
+        webSettings.setBuiltInZoomControls(true);
+        webSettings.setDisplayZoomControls(false);
+
+        webSettings.setAllowFileAccess(true);
+        setAllowAccessFromFileUrls(webSettings, true);
+//        webSettings.setBuiltInZoomControls(false);
+//        webSettings.setJavaScriptEnabled(true);
+//        webSettings.setDomStorageEnabled(true);
+//        webSettings.setRenderPriority(WebSettings.RenderPriority.HIGH);
+
+
         final String filesDir = context.getFilesDir().getPath();
         final String databaseDir = filesDir.substring(0, filesDir.lastIndexOf("/")) + DATABASES_SUB_FOLDER;
 
-        final WebSettings webSettings = getSettings();
-        webSettings.setAllowFileAccess(false);
-        setAllowAccessFromFileUrls(webSettings, false);
-        webSettings.setBuiltInZoomControls(false);
-        webSettings.setJavaScriptEnabled(true);
-        webSettings.setDomStorageEnabled(true);
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN_MR2) {
-            webSettings.setRenderPriority(WebSettings.RenderPriority.HIGH);
-        }
+
         webSettings.setDatabaseEnabled(true);
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT) {
-            webSettings.setDatabasePath(databaseDir);
-        }
+        webSettings.setDatabasePath(databaseDir);
 
 //        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
 //            webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);

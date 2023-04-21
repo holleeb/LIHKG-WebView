@@ -22,9 +22,46 @@
     if(!location.hostname.endsWith('lihkg.com')) return;
 
     if (!JSON._parse && JSON.parse) {
+        let last_replies_notifications = [];
+        window.last_replies_notifications=last_replies_notifications;
         JSON._parse = JSON.parse;
         JSON.parse = function(text, r) {
             let res = JSON._parse.apply(this, arguments);
+
+//            console.log(   JSON.stringify(res, null , "\t"));
+//                console.log( 4881);
+
+            if(res && res.success === 1 && res.response && res.response.notifications && 'length' in res.response.notifications ){
+
+//                console.log( 4882);
+                try{
+                    last_replies_notifications.length = 0 ;
+
+                    for( const nt of res.response.notifications){
+                        if(nt && nt.thread){
+                            last_replies_notifications.push({
+                                type: nt.type,
+                                subtitle: nt.subtitle,
+                                title: nt.title,
+                                thread_id: ((+nt.thread.thread_id) || 0),
+                                last_replied: (nt.thread.last_replied || null)
+                            });
+                        }else{
+                            last_replies_notifications.push({
+                                type: nt.type,
+                                subtitle: nt.subtitle,
+                                title: nt.title
+                            });
+                        }
+                    }
+                }catch(e){console.log(e)}
+//                console.log( 4883);
+
+//                console.log(JSON.stringify(last_replies_notifications, null , "\t") );
+
+//                console.log( 4884);
+            }
+
 
             const contentFix = (resObj) => {
                 if (!resObj || typeof resObj !== 'object') return;

@@ -16,15 +16,12 @@
 
 package com.culefa.android.LIHKGWebView.ui.main;
 
-import androidx.activity.OnBackPressedCallback;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
-import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
-import androidx.lifecycle.ViewModelProvider;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
@@ -36,7 +33,6 @@ import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.net.Uri;
-import android.net.http.SslError;
 import android.os.Build;
 import android.os.Bundle;
 
@@ -57,29 +53,28 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
-import android.webkit.SslErrorHandler;
 import android.webkit.URLUtil;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
-import android.webkit.WebViewClient;
 import android.widget.Button;
 import android.widget.ProgressBar;
 import android.widget.TextView;
-import android.widget.Toast;
 import android.window.OnBackInvokedCallback;
 import android.window.OnBackInvokedDispatcher;
 
 import com.culefa.android.LIHKGWebView.MainActivity;
 import com.culefa.android.LIHKGWebView.R;
 import com.culefa.android.LIHKGWebView.ui.webview.MyWebView;
+import com.culefa.android.LIHKGWebView.ui.webview.MyWebViewRef;
 
-import java.io.File;
+import java.lang.ref.WeakReference;
+import java.util.HashMap;
 import java.util.Locale;
 
 
 public class MainFragment extends Fragment implements MyWebView.Listener {
 
-    public MyWebView mWebView = null;
+    public MyWebViewRef mWebViewRef = null;
 //    public Boolean overrideDarkMode = null;
 //    public Boolean currentDarkMode = null;
 
@@ -100,32 +95,50 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
 
 
     }
-//
-//    @Override
-//    protected void onSaveInstanceState(Bundle outState )
-//    {
-//        super.onSaveInstanceState(outState);
-//        if(mWebView != null) {
-//            mWebView.saveState(outState);
-//        }
-//    }
-//
-//    @Override
-//    protected void onRestoreInstanceState(Bundle savedInstanceState)
-//    {
-//        super.onRestoreInstanceState(savedInstanceState);
-//        if(mWebView != null) {
-//            mWebView.restoreState(savedInstanceState);
-//        }
-//    }
+
+    public MyWebView getMyWebView(){
+        MyWebView mWebView = null;
+        if(mWebViewRef != null) mWebView = mWebViewRef.get();
+        return mWebView;
+    }
+
+    @Override
+    public void onSaveInstanceState(@NonNull Bundle outState )
+    {
+        MyWebView mWebView = getMyWebView();
+        Log.i("LIHKGWebView", "onSaveInstanceState");
+        MainActivity mainActivity = (MainActivity) getActivity();
+        if(mainActivity != null){
+
+            Bundle webViewBundle = mainActivity.webViewBundleRef.get();
+            if(webViewBundle == null) {
+                mainActivity.webViewBundleRef = new WeakReference<>(new Bundle());
+                webViewBundle = mainActivity.webViewBundleRef.get();
+            }else if(mWebView != null){
+                webViewBundle.clear();
+            }
+
+            if(webViewBundle != null) {
+                if(mWebView != null) mWebView.saveState(webViewBundle);
+                outState.putBundle("webViewState", webViewBundle);
+            }else{
+                outState.putBundle("webViewState", null);
+            }
+        }
+        super.onSaveInstanceState(outState);
+    }
+
 
 
     @Override
-    public void onViewStateRestored(@Nullable Bundle savedInstanceState) {
-        super.onViewStateRestored(savedInstanceState);
+    public void onViewStateRestored(@Nullable Bundle savedInstanceState)
+    {
         Log.i("LIHKGWebView", "onViewStateRestored");
+        super.onViewStateRestored(savedInstanceState);
         refreshColors();
     }
+
+
 
     @Override
     public void onAttach(@NonNull Context context) {
@@ -160,8 +173,15 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
 
     @Override
     public void onStart() {
+        MyWebView mWebView = getMyWebView();
         super.onStart();
         Log.i("LIHKGWebView", "onStart");
+
+        if(mWebView != null && mWebView.getParent() == null && mWebViewParent != null){
+            mWebViewParent.addView(mWebViewParent);
+        }
+
+        mWebViewParent = null;
 //        if(mWebView == null){
 //            MainActivity mainActivity = (MainActivity) requireActivity();
 //            mainActivity.recreateFragment();
@@ -175,11 +195,16 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
 //        }
     }
 
-//    public ViewGroup mWebViewParent = null;
+    public ViewGroup mWebViewParent = null;
 
     @Override
     public void onStop() {
+        MyWebView mWebView = getMyWebView();
         Log.i("LIHKGWebView", "onStop");
+        mWebViewParent = null;
+        if(mWebView != null && mWebView.getParent() != null){
+            mWebViewParent = (ViewGroup) mWebView.getParent();
+        }
 
 //        mWebView = null;
 
@@ -207,8 +232,15 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
 
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
-        super.onViewCreated(view, savedInstanceState);
+        MyWebView mWebView = getMyWebView();
         Log.i("LIHKGWebView", "onViewCreated");
+        super.onViewCreated(view, savedInstanceState);
+        if(savedInstanceState != null && mWebView != null){
+            Bundle webViewBundle =  savedInstanceState.getBundle("webViewState");
+            if(webViewBundle != null){
+                mWebView.restoreState(webViewBundle);
+            }
+        }
     }
 
 
@@ -217,6 +249,7 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
 
     @SuppressLint("SetJavaScriptEnabled")
     public void setupWebViewSettings(){
+        MyWebView mWebView = getMyWebView();
 
         if(getActivity() == null || mWebView == null) return;
 
@@ -250,8 +283,8 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             webSettings.setOffscreenPreRaster(false);
         }
-        webSettings.setSupportMultipleWindows(false);
-        webSettings.setSupportZoom(false);
+//        webSettings.setSupportMultipleWindows(false);
+//        webSettings.setSupportZoom(false);
 
         webSettings.setDomStorageEnabled(true); // DOMストレージAPIを有効にする
 //        webSettings.setSavePassword(false); // フォームに入力した内容を記憶しないようにする
@@ -261,7 +294,7 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
         mWebView.setScrollBarStyle(WebView.SCROLLBARS_INSIDE_OVERLAY);
 //        mWebView.setVerticalScrollbarOverlay(true);
 //        mWebView.setHorizontalScrollbarOverlay(true);
-        webSettings.setBuiltInZoomControls(false); // ズームを無効にする
+//        webSettings.setBuiltInZoomControls(false); // ズームを無効にする
 
         // Samsung S23 Ultra
         webSettings.setUserAgentString("Mozilla/5.0 (Linux; Android 13; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Mobile Safari/537.36");
@@ -308,6 +341,7 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
 
+//        MyWebView mWebView = getMyWebView();
         if(getActivity() == null) return null;
 
         requireActivity().getWindow().setFlags(
@@ -326,9 +360,12 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
 
         View view = inflater.inflate(R.layout.fragment_main, container, false);
 
-        mWebView = (MyWebView) view.findViewById(R.id.webview);
-        progressBar = (ProgressBar) view.findViewById(R.id.progress_bar);
+//        mWebView = (MyWebView) view.findViewById(R.id.webview);
 
+        mWebViewRef = MyWebViewRef.createWebViewRef((MyWebView) view.findViewById(R.id.webview));
+
+        MyWebView mWebView = getMyWebView();
+        progressBar = (ProgressBar) view.findViewById(R.id.progress_bar);
 
 //        mWebView.restoreState( ((MainActivity) requireActivity()).webViewBundle);
 //
@@ -350,6 +387,7 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
             requireActivity().getOnBackInvokedDispatcher().registerOnBackInvokedCallback(OnBackInvokedDispatcher.PRIORITY_DEFAULT, new OnBackInvokedCallback() {
                 @Override
                 public void onBackInvoked() {
+                    MyWebView mWebView = getMyWebView();
 
                     if(mWebView!=null && mWebView.canGoBack()) mWebView.goBack();
                     else if(getActivity() != null) requireActivity().onBackPressed();
@@ -369,6 +407,7 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
             @Override
             public boolean canChildScrollUp(@NonNull SwipeRefreshLayout parent, @Nullable View child) {
 
+                MyWebView mWebView = getMyWebView();
                 if(getActivity() == null || mWebView == null) return false;
 //                if(mWebView == null) return false;
 ////                Log.i("canChildScrollUp", mWebView.capturePullDown+"");
@@ -377,6 +416,11 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
             }
         });
         registerForContextMenu(mWebView);
+
+        if (savedInstanceState != null) {
+            mWebView.restoreState(savedInstanceState);
+        }
+
         if(savedInstanceState == null) {
             mWebView.setActivity(((AppCompatActivity) getActivity()));
             mWebView.setFragment(this);
@@ -384,11 +428,14 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
             mWebView.setDefaultWebChromeClient(mWebView.new BWebChromeClient());
             mWebView.setDownloadListener(mWebView.new ADownloadListener());
 
+            mWebView.wxStartSafeBrowsing();
+
 
 
             swipeRefreshLayout.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
                 @Override
                 public void onRefresh() {
+                    MyWebView mWebView = getMyWebView();
 
                     mWebView.getSettings().setCacheMode(WebSettings.LOAD_NO_CACHE);
                     mWebView.clearCache(true);
@@ -408,6 +455,10 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
 
             setupWebViewSettings();
 
+        }
+
+        if(mWebView.getUrl() == null || mWebView.getUrl().isEmpty()){
+
             String requestedUrl = getViewModel().webViewURL;
             if(requestedUrl != null) {
                 mWebView.loadUrl(requestedUrl);
@@ -416,12 +467,14 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
             }
 
         }
+
         mMessage= (TextView) view.findViewById(R.id.message);
 //        mMessage.setText("1223");
         startMemoryMonitor(1024 * 1024);
         view.post(new Runnable() {
             @Override
             public void run() {
+                MyWebView mWebView = getMyWebView();
 
                 if(getActivity() == null || mWebView == null) return;
                 refreshColors();
@@ -434,6 +487,7 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
 
     @Override
     public void onResume() {
+        MyWebView mWebView = getMyWebView();
         super.onResume();
         Log.i("LIHKGWebView","onResume");
         if(mWebView!=null){
@@ -448,6 +502,7 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
 
     @Override
     public void onPause() {
+        MyWebView mWebView = getMyWebView();
         Log.i("LIHKGWebView","onPause");
         if(mWebView!=null)mWebView.onPause();
         super.onPause();
@@ -455,6 +510,7 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
 
     @Override
     public void onDestroyView() {
+        MyWebView mWebView = getMyWebView();
         Log.i("LIHKGWebView","onDestroyView");
 
         if(mWebView!=null) {
@@ -480,7 +536,6 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
         progressBar.setVisibility(View.VISIBLE);
 
     }
-
 
 
     //
@@ -538,7 +593,15 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
                 ActivityCompat.requestPermissions(requireActivity(), new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, PERMISSION_REQUEST_CODE);
             }
         }
-        downloadFile(url, userAgent, contentDisposition, mimetype);
+
+        if(url.startsWith("blob:")){
+            downloadBlob(url, userAgent, contentDisposition, mimetype);
+//            Log.i("WWS", mimetype);
+
+        }else {
+
+            downloadFile(url, userAgent, contentDisposition, mimetype);
+        }
 
 
 //
@@ -568,8 +631,13 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
 
     private void downloadFile(String url, String userAgent, String contentDisposition, String mimetype) {
 
-        DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
-
+        DownloadManager.Request request = null;
+        try {
+            request = new DownloadManager.Request(Uri.parse(url));
+        }catch (Throwable err){
+            Log.e("LIHKGWebView","Download Failed", err);
+        }
+        if(request == null) return;
         request.setMimeType(mimetype);
         String fileName = URLUtil.guessFileName(url, contentDisposition, mimetype);
         request.addRequestHeader("User-Agent", userAgent);
@@ -580,6 +648,95 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
 
         DownloadManager downloadManager = (DownloadManager) requireContext().getSystemService(Context.DOWNLOAD_SERVICE);
         downloadManager.enqueue(request);
+    }
+
+    int downloadId = 0;
+    public HashMap<Integer, String> downloadList = new HashMap<Integer, String>();
+
+
+
+    public String getBase64StringFromBlobUrl(String blobUrl,String mimeType) {
+        if(blobUrl.startsWith("blob")){
+//            fileMimeType = mimeType;
+            return "javascript: (()=>{var xhr = new XMLHttpRequest();" +
+                    "xhr.onload = function(e) {" +
+                    "    if (this.status == 200) {" +
+                    "        var blobFile = this.response;" +
+                    "        var reader = new FileReader();" +
+                    "        reader.onloadend = function() {" +
+                    "            base64data = reader.result;" +
+                    "            xec2D.getBase64FromBlobData(base64data);" +
+                    "        };" +
+                    "        reader.readAsDataURL(blobFile);console.log('zz',55);" +
+                    "    } " +
+                    "        console.log('ss', this.status, this.response);" +
+                    "};" +
+                    "xhr.responseType = 'arraybuffer';" +
+                    "xhr.open('GET', '"+ blobUrl +"');" +
+//                    "xhr.setRequestHeader('Content-type','" + mimeType +";charset=UTF-8');" +
+                    "xhr.send();console.log('tt', 33); setTimeout(()=>{console.log(xhr.status)},500) })();";
+        }
+        return "javascript: console.log('It is not a Blob URL');";
+    }
+    private void downloadBlob(String url, String userAgent, String contentDisposition, String mimetype) {
+
+//        String fileName = "file_" + System.currentTimeMillis() + ".pdf"; // Customize this based on your file type and desired name
+//        String mimeType = "application/pdf"; // Set MIME type based on the file type you want to download
+
+        if(getActivity() == null) return;
+
+        downloadId++;
+        int currentId = downloadId;
+        downloadList.put(currentId, url+"\n"+userAgent+"\n"+contentDisposition+"\n"+mimetype);
+        Log.i("downloadBlob", url);
+        Log.e("LIHKGWebView", "blobUrl cannot be downloaded");
+
+//        if(mWebView != null  ) {
+////            String newUrl = getBase64StringFromBlobUrl(url, mimetype);
+////            Log.i("downloadBlob-", newUrl);
+//
+////            mWebView.loadUrl(newUrl);
+////            mWebView.evaluateJavascript(newUrl, null);
+//
+//            mWebView.loadUrl("javascript: ((url)=>{fetch(url).then(r => r.blob()).then(r=>console.log(r));})('"+ url +"')");
+//
+//        }
+        /*
+        String js = "javascript: fetch('" + url + "')" +
+                ".then(resp => resp.blob())" +
+                ".then(blob => {" +
+                "  let reader = new FileReader();" +
+                "  reader.onloadend = function() {" +
+                "    let base64data = reader.result;" +
+                "    xec2D.onBlobDataReceived("+ currentId +", base64data);" +
+                "  };" +
+                "  reader.readAsDataURL(blob);" +
+                "});";
+
+         */
+//
+//        String mimeType = "application/octet-stream"; // Set MIME type based on the file type you want to download
+//
+//
+//        String js = "javascript: (()=>{let xhr = new XMLHttpRequest();" +
+//                "xhr.open('GET', '"+ url +"', true);" +
+//                "xhr.setRequestHeader('Content-type','" + mimeType +";charset=UTF-8');" +
+//                "xhr.responseType = 'blob';" +
+//                "xhr.onload = function(e) {" +
+//                "    if (this.status == 200) {" +
+//                "        let blobFile = this.response;console.log(1);" +
+//                "        let reader = new FileReader();console.log(2);" +
+//                "        reader.onloadend = function() {" +
+//                "            base64data = reader.result;" +
+//                "            Android.getBase64FromBlobData(base64data);" +
+//                "        };" +
+//                "        reader.readAsDataURL(blobFile);console.log(4);" +
+//                "    }" +
+//                "};" +
+//                "xhr.send();})();";
+
+
+//        mWebView.evaluateJavascript(js, null);
     }
 
     @Override
@@ -603,6 +760,7 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
         final Runnable updateMessage = new Runnable() {
             @Override
             public void run() {
+                MyWebView mWebView = getMyWebView();
                 if(getActivity() == null || mMessage == null || mWebView == null) return;
                 long usedMemory = runtime.totalMemory() - runtime.freeMemory();
                 if (Math.abs(usedMemory - lastUsedMemoryArr[0]) >= memoryThreshold) {
@@ -750,6 +908,7 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
 
     @Override
     public void onConfigurationChanged(@NonNull Configuration newConfig) {
+        MyWebView mWebView = getMyWebView();
 
         super.onConfigurationChanged(newConfig);
         boolean isDarkMode = getViewModel().isDarkMode;
@@ -843,6 +1002,7 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
 
     @Override
     public boolean onContextItemSelected(MenuItem item) {
+        MyWebView mWebView = getMyWebView();
         if(mWebView == null || webViewContextDomData ==null) return super.onContextItemSelected(item);
 
 
@@ -877,9 +1037,11 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
     public boolean fragmentDead = false;
 
     public void killWebView() {
+        MyWebView mWebView = getMyWebView();
         if(mWebView != null) {
             mWebView.destroy();
             mWebView = null;
+            mWebViewRef = null;
         }
 
         Handler handler = new Handler(Looper.getMainLooper());
@@ -909,6 +1071,7 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
         },1);
 
     }
+
 
 
 }

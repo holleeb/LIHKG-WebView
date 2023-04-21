@@ -5,9 +5,14 @@
     <uses-permission android:name="android.permission.INTERNET"/>
 
     <!-- for media uploading? -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         tools:ignore="ScopedStorage" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+
+    <uses-permission android:name="android.permission.DOWNLOAD_WITHOUT_NOTIFICATION" />
+    
+    <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
 
 
     <!--  to be further checked
@@ -112,6 +117,12 @@
         android:enableOnBackInvokedCallback="true"
         tools:targetApi="tiramisu"
         >
+
+        <meta-data android:name="android.webkit.WebView.EnableSafeBrowsing"
+            android:value="true" />
+
+        <meta-data android:name="android.webkit.WebView.MetricsOptOut"
+            android:value="true" />
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -166,6 +177,17 @@
         <provider
             android:name=".DropDataProvider"
             android:authorities="com.culefa.android.LIHKGWebView.DropDataProvider" />
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="com.culefa.android.LIHKGWebView.FileProvider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
     </application>
 
 </manifest>

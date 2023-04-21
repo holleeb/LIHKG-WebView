@@ -131,6 +131,7 @@
         title = '';
         href = href.replace('https://lihkg.com/', '/');
         if(href.endsWith('#')) href = href.substring(0, href.length-1);
+//        if(state && state.pDs && typeof state.pDs.historyLen =='number') state.pDs.historyLen++;
         window.history.pushState533(state, title, href);
         stateMgr.modifyByPushState(state, href);
     }
@@ -501,7 +502,9 @@
 
     window.addEventListener('message', function(evt){
 
-        if(evt.data === 'onGameClose' && evt.isTrusted && evt.origin === "https://game.lihkg.com" && history.length >= 1 && document.visibilityState === 'visible'){
+        if(evt.data === 'onGameClose' && evt.isTrusted && evt.origin === "https://game.lihkg.com" && history.length >= 1 && document.visibilityState === 'visible' ){
+
+            if(!canGoBackByState()) return;
             forceHistoryBackL = Date.now();
             history.go(-1);
         }
@@ -521,20 +524,106 @@
 //            }
 //
 //    })
+    function canGoBackByState(){
+    if(stateMgr.currentState && stateMgr.prevState){
+
+    let pDsPrev = stateMgr.prevState.pDs;
+    let pDsCurr = stateMgr.currentState.pDs;
+
+
+    if(pDsPrev && pDsCurr){
+
+    return true;
+
+//    if(pDsPrev.historyLen === pDsCurr.historyLen-1) return true;
+
+    }
+
+    }
+
+    return false;
+
+    }
 
     document.addEventListener('click', function(evt){
         if(!evt || !evt.target || !evt.isTrusted || evt.target.nodeType != 1 || !evt.cancelable) return;
         if(typeof xec2D != 'object' || !xec2D) return;
         let href = evt.target.href;
+//        console.log("href", href, evt.target.tagName, evt.target.className, evt.target.outerHTML);
+        console.log("href", href, evt.target.tagName, evt.target.className);
+
         if(href){
-            // remove unnecessary "?post="
-            let m = /^(https?\:\/\/lihkg\.com\/thread\/\d+\/page\/\d+)\?post=\d+$/.exec(href);
-            if(m && m[1]){
-                evt.target.href = m[1];
+            let ma = null;
+            if(evt.target.matches('._21IQKhlBjN2jlHS_TVgI3l a._2A_7bGY9QAXcGu1neEYDJB:empty')){
+                console.log('url click 01');
+                // remove unnecessary "?post="
+                let m = /^(https?\:\/\/lihkg\.com\/thread\/\d+\/page\/\d+)\?post=\d+$/.exec(href);
+                if(m && m[1]){
+                    console.log('url click 02');
+                    evt.target.href = m[1];
+                }
+            }else if(evt.target.matches('li._18_tUzwZfna4i5-VCnCpcJ *')){
+//                console.log('notification post click 01');
+                let li = evt.target.closest('li._18_tUzwZfna4i5-VCnCpcJ');
+                    let last_replies_notifications = window.last_replies_notifications;
+                if(li && li.parentNode && last_replies_notifications){
+//                  console.log('notification post click 02');
+                    let arr = [...li.parentNode.querySelectorAll('li._18_tUzwZfna4i5-VCnCpcJ')]
+                    let idx = arr.indexOf(li);
+                    if(idx >=0 && last_replies_notifications[idx] && last_replies_notifications[idx].type ==='reply'){
+//                      console.log('notification post click 03');
+                    let nt = last_replies_notifications[idx];
+                    let subtitleElm = li.querySelector('small._1rlZAFx8T4NzuuEGljbzNW');
+                    let subtitleText = ((subtitleElm?subtitleElm.textContent:"")||"").trim();
+                    let titleElm = li.querySelector('span._2jw0EMRg46nEqPGxZ38ew6');
+                    let titleText = ((titleElm?titleElm.textContent:"")||"").trim();
+//                    console.log(subtitleText, 9, titleText, 8,  nt.subtitle, 7, nt.title )
+                    if(nt.last_replied && nt.last_replied.page>=1 && nt.subtitle && nt.title && subtitleText.indexOf(nt.subtitle)>=0 && titleText.indexOf(nt.title)>=0 && href.indexOf("/thread/"+nt.thread_id+"/page/")>=0  ){
+                        let url_1 = evt.target.getAttribute('href');
+                        let url_2 = url_1.replace(/\/page\/\d+$/,'/page/'+nt.last_replied.page);
+//                          console.log('notification post click 04',url_2);
+                        if(url_1 !== url_2) evt.target.setAttribute('href', url_2);
+                    }
+//                    console.log(idx, JSON.stringify (last_replies_notifications[idx]), li.textContent)
+                    }else{
+                    try{
+                    console.log('tbc003', idx, last_replies_notifications, last_replies_notifications[idx], last_replies_notifications[idx].type)
+                    }catch(e){console.log(e)}
+
+                    }
+                }
+            }else if(ma = /^https\:\/\/r\.lihkg\.com\/link\?u\=([^\&\?]+)/.exec(href)){
+                // remove the shitty LIHKG detection on redirected link
+                // this can break the website! see lih.kg/3367955 (archive.ph/2eeFb)
+                let encodedURL = ma[1];
+                let decodedURL = '';
+                try{
+                    decodedURL = decodeURIComponent(encodedURL) || '';
+                }catch(e){}
+                if(decodedURL){
+                    if(evt.target.textContent.trim() == decodedURL){
+
+                        let confirmRes = false;
+                        if(/\b(lih\.?kg)\b/.test(decodedURL)){
+                            confirmRes = true;
+                        }else{
+                            confirmRes = window.confirm("This link may lead to a potentially harmful site. \nAre you sure you want to open it?");
+                        }
+                        if(confirmRes){
+                            evt.target.setAttribute('href', decodedURL);
+                        }else{
+                            evt.preventDefault();
+                        }
+                    }
+                }
             }
+
             return;
         }
+
+
         if(typeof history != 'object' || !history || !history.length) return;
+        if(!canGoBackByState()) return;
         let target = evt.target;
         let elmTarget = evt.target.closest('div[class]');
         if(!elmTarget) return;
@@ -621,6 +710,8 @@
         let hsObj = {
 
         }
+
+//        hsObj.historyLen = window.history.length;
 
         // photo page
         if (document.querySelector('.Fjkeu8rp1XE7mqA3uW1tY > ._1fEx42oSb0uVYu_3Dhqm95 > i.i-close')) {

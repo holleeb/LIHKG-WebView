@@ -31,6 +31,9 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.AttributeSet;
 import android.util.Log;
+import android.view.ActionMode;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.WindowManager;
 import android.webkit.URLUtil;
@@ -40,12 +43,16 @@ import com.culefa.android.LIHKGWebView.ui.main.MainFragment;
 import com.culefa.android.LIHKGWebView.ui.main.MainViewModel;
 import com.culefa.android.LIHKGWebView.ui.webview.MyWebView;
 
+import java.lang.ref.WeakReference;
+
 public class MainActivity extends AppCompatActivity {
 
-    public Bundle webViewBundle = new Bundle();
+    public WeakReference<Bundle> webViewBundleRef = new WeakReference<>( new Bundle());
 
     public String requestedUrl = null;
     public MainViewModel mViewModel = null;
+    public Menu systemSelectionMenu = null;
+    public int copyActionId = -1;
 
     public static void replaceToNewFragment(FragmentManager fm){
         fm.beginTransaction()
@@ -154,13 +161,29 @@ public class MainActivity extends AppCompatActivity {
 
 
     @Override
-    protected void onSaveInstanceState(Bundle outState )
+    protected void onSaveInstanceState(@NonNull Bundle outState )
     {
-        super.onSaveInstanceState(outState);
+        Log.i("MainActivity","onSaveInstanceState");
         MyWebView mWebView = (MyWebView) findViewById(R.id.webview);
-        if(mWebView != null) {
-            mWebView.saveState(outState);
+
+        Bundle webViewBundle = webViewBundleRef.get();
+        if(webViewBundle == null) {
+            webViewBundleRef = new WeakReference<>(new Bundle());
+            webViewBundle = webViewBundleRef.get();
+        } else if(mWebView != null){
+            webViewBundle.clear();
         }
+        if(webViewBundle != null) {
+            if(mWebView != null) {
+                mWebView.saveState(webViewBundle);
+            }
+            outState.putBundle("webViewState", webViewBundle);
+        }else{
+            outState.putBundle("webViewState", null);
+        }
+
+        super.onSaveInstanceState(outState);
+
     }
 
 
@@ -171,8 +194,11 @@ public class MainActivity extends AppCompatActivity {
         Log.i("MainActivity","onRestoreInstanceState");
         super.onRestoreInstanceState(savedInstanceState);
         MyWebView mWebView = (MyWebView) findViewById(R.id.webview);
-        if(mWebView != null) {
-            mWebView.restoreState(savedInstanceState);
+        if(savedInstanceState != null && mWebView != null){
+            Bundle webViewBundle =  savedInstanceState.getBundle("webViewState");
+            if(webViewBundle != null){
+                mWebView.restoreState(webViewBundle);
+            }
         }
 
     }
@@ -241,4 +267,31 @@ public class MainActivity extends AppCompatActivity {
 
         Log.i("MainActivity","onLowMemory");
     }
+
+    @Override
+    public void onActionModeStarted(ActionMode mode) {
+        Log.i("MainActivity", "onActionModeStarted");
+        super.onActionModeStarted(mode);
+        systemSelectionMenu = mode.getMenu(); // keep a reference to the menu
+//        MenuItem copyItem = systemSelectionMenu.getItem(0); // fetch any menu items you want
+//        copyActionId = copyItem.getItemId(); // store reference to each item you want to manually trigger
+//
+//
+//        new Handler().postDelayed(new Runnable() {
+//            @Override
+//            public void run() {
+//
+//                systemSelectionMenu.clear();
+//                systemSelectionMenu.close();
+//            }
+//        }, 1000);
+    }
+
+    @Override
+    public void onActionModeFinished(ActionMode mode) {
+        Log.i("MainActivity", "onActionModeFinished");
+        systemSelectionMenu = null;
+        super.onActionModeFinished(mode);
+    }
+
 }

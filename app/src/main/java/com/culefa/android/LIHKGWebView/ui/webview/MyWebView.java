@@ -17,22 +17,28 @@
 package com.culefa.android.LIHKGWebView.ui.webview;
 
 import android.annotation.SuppressLint;
+import android.app.DownloadManager;
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.net.Uri;
 import android.net.http.SslError;
 import android.os.Build;
+import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
-import android.os.SystemClock;
-import android.text.Editable;
-import android.text.Selection;
 import android.text.SpannableStringBuilder;
 import android.text.TextUtils;
 import android.util.AttributeSet;
+import android.util.Base64;
 import android.util.Log;
-import android.view.KeyCharacterMap;
+import android.view.ContextMenu;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
@@ -41,8 +47,8 @@ import android.view.ViewGroup;
 import android.view.inputmethod.BaseInputConnection;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;
-import android.view.inputmethod.InputMethodManager;
 import android.webkit.JavascriptInterface;
+import android.webkit.MimeTypeMap;
 import android.webkit.PermissionRequest;
 import android.webkit.RenderProcessGoneDetail;
 import android.webkit.SslErrorHandler;
@@ -54,15 +60,16 @@ import android.webkit.WebView;
 
 
 import android.app.AlertDialog;
-import android.widget.EditText;
+import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.view.MotionEventCompat;
-import androidx.core.view.inputmethod.EditorInfoCompat;
-import androidx.core.view.inputmethod.InputConnectionCompat;
+import androidx.core.content.FileProvider;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
+import androidx.webkit.SafeBrowsingResponseCompat;
 import androidx.webkit.WebSettingsCompat;
+import androidx.webkit.WebViewCompat;
 import androidx.webkit.WebViewFeature;
 
 import com.culefa.android.LIHKGWebView.MainActivity;
@@ -73,11 +80,15 @@ import com.culefa.android.LIHKGWebView.ui.main.MainFragment;
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.text.DateFormat;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -116,6 +127,12 @@ public class MyWebView extends AdvancedWebView {
         mTouchSlop = vc.getScaledTouchSlop();
     }
 
+    @Override
+    public boolean onNestedPrePerformAccessibilityAction(View target, int action, Bundle args) {
+        Log.i("MyWebView", "onNestedPrePerformAccessibilityAction");
+        return super.onNestedPrePerformAccessibilityAction(target, action, args);
+    }
+
     public static class TextInputConnection extends BaseInputConnection
     {
         /// <summary>
@@ -137,6 +154,7 @@ public class MyWebView extends AdvancedWebView {
     }
     public final String[] MIME_TYPES = new String[]{"image/*", "video/*"};
 
+    public InputConnection inputConnection = null;
 
     @Override
     public InputConnection onCreateInputConnection(EditorInfo editorInfo) {
@@ -154,13 +172,15 @@ public class MyWebView extends AdvancedWebView {
 ////                return super.deleteSurroundingText(beforeLength, afterLength);
 ////            }
 ////        };
+        inputConnection = null;
         try{
-            return super.onCreateInputConnection(editorInfo); // gboard for double tap text selection
+            inputConnection = super.onCreateInputConnection(editorInfo);
+             // gboard for double tap text selection
         }catch (Throwable ignored){}
 
 
 
-        return null;
+        return inputConnection;
 
 
     }
@@ -242,8 +262,42 @@ public class MyWebView extends AdvancedWebView {
         super.computeScroll();
     }
 
+    private File createTempFileFromBytes(Context context, byte[] data) {
+        File tempFile = null;
+        try {
+            tempFile = File.createTempFile("tempFile", null,  context.getCacheDir());
+            FileOutputStream fos = new FileOutputStream(tempFile);
+            fos.write(data);
+            fos.close();
+        } catch (IOException e) {
+            Log.e("LIHKGWebView", "Error creating temp file from bytes: ", e);
+        }
+        return tempFile;
+    }
+
+    private void downloadByteArray(byte[] data, String fileName) {
+        MainActivity mainActivity = (MainActivity) mFragment.getActivity();
+        if(mainActivity == null) return;
+        File tempFile = createTempFileFromBytes(mainActivity, data);
+
+        if (tempFile != null) {
+            Uri uri = FileProvider.getUriForFile(mainActivity, "com.culefa.android.LIHKGWebView.FileProvider", tempFile);
+            String mimeType = "application/octet-stream"; // Set MIME type based on the file type you want to download
+
+            DownloadManager downloadManager = (DownloadManager) mainActivity.getSystemService(Context.DOWNLOAD_SERVICE);
+            DownloadManager.Request request = new DownloadManager.Request(uri);
+
+            request.setMimeType(mimeType);
+            request.addRequestHeader("Content-Type", mimeType);
+            request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName);
+            request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+            request.allowScanningByMediaScanner();
+            downloadManager.enqueue(request);
+        }
+    }
+
     public class MyJavaScriptInterface {
-        private Context context;
+        final private Context context;
 
         public MyJavaScriptInterface(Context context) {
             this.context = context;
@@ -358,6 +412,165 @@ public class MyWebView extends AdvancedWebView {
 
         }
 
+        @JavascriptInterface
+        public void notifySpanToolClicked(){
+
+            if(inputConnection != null && mFragment != null) {
+                MainActivity mainActivity = (MainActivity) mFragment.getActivity();
+                if(mainActivity != null && mainActivity.systemSelectionMenu != null) {
+
+                    inputConnection.sendKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ESCAPE));
+                    inputConnection.sendKeyEvent(new KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ESCAPE));
+                }
+            }
+        }
+
+//        @JavascriptInterface
+//        public void showKeyboard(){
+//
+//            Log.i("AWW", (inputConnection!=null)+"");
+//
+//            if(inputConnection != null && mFragment != null) {
+//                MainActivity mainActivity = (MainActivity) mFragment.getActivity();
+//                if(mainActivity != null) {
+//
+//                    inputConnection.sendKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_E));
+//                    inputConnection.sendKeyEvent(new KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_E));
+//                }
+//            }
+//
+//
+//        }
+
+        @JavascriptInterface
+        public void cancelRefresh(){
+
+            SwipeRefreshLayout swipeRefreshLayout = (SwipeRefreshLayout)mFragment.getView().findViewById(R.id.swipe_refresh_layout);
+            if(swipeRefreshLayout.isRefreshing()) swipeRefreshLayout.setRefreshing(false);
+        }
+
+
+        @JavascriptInterface
+        public void onBlobDataReceived(int currentId, String base64Data) {
+            if(mFragment==null)return;
+            String downloadInfo= mFragment.downloadList.get(currentId);
+            if(downloadInfo == null || downloadInfo.isEmpty()) return;
+            String[] arrOfStr= downloadInfo.split("\n");
+            String url = arrOfStr[0];
+            String userAgent = arrOfStr[1];
+            String contentDisposition = arrOfStr[2];
+            String mimetype = arrOfStr[3];
+            byte[] data = Base64.decode(base64Data.substring(base64Data.indexOf(",") + 1), Base64.DEFAULT);
+            Log.i("JS", "onBlobDataReceived - " +data.length);
+            MyWebView.this.downloadByteArray(data, "myfile.txt");
+
+//            DownloadManager downloadManager = (DownloadManager) context.getSystemService(Context.DOWNLOAD_SERVICE);
+//            DownloadManager.Request request = new DownloadManager.Request(Uri.parse(base64Data));
+
+
+            /*
+            if(request == null) return;
+            request.setMimeType(mimetype);
+            String fileName = URLUtil.guessFileName(url, contentDisposition, mimetype);
+            request.addRequestHeader("User-Agent", userAgent);
+            request.setTitle(fileName);
+            request.allowScanningByMediaScanner();
+            request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+            request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName);
+
+            DownloadManager downloadManager = (DownloadManager) requireContext().getSystemService(Context.DOWNLOAD_SERVICE);
+            downloadManager.enqueue(request);
+            */
+
+            /*
+            request.setMimeType(mimeType);
+            request.addRequestHeader("Content-Type", mimeType);
+            request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName);
+            request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+            request.allowScanningByMediaScanner();
+            downloadManager.enqueue(request);
+            */
+        }
+
+
+        @JavascriptInterface
+        public void getBase64FromBlobData(String base64Data) throws IOException {
+            Log.i("getBase64FromBlobData","getBase64FromBlobData");
+            convertBase64StringToFileAndStoreIt(base64Data);
+        }
+
+        private String fileMimeType;
+
+        public String getBase64StringFromBlobUrl(String blobUrl,String mimeType) {
+            if(blobUrl.startsWith("blob")){
+                fileMimeType = mimeType;
+                return "javascript: var xhr = new XMLHttpRequest();" +
+                        "xhr.open('GET', '"+ blobUrl +"', true);" +
+                        "xhr.setRequestHeader('Content-type','" + mimeType +";charset=UTF-8');" +
+                        "xhr.responseType = 'blob';" +
+                        "xhr.onload = function(e) {" +
+                        "    if (this.status == 200) {" +
+                        "        var blobFile = this.response;" +
+                        "        var reader = new FileReader();" +
+                        "        reader.readAsDataURL(blobFile);" +
+                        "        reader.onloadend = function() {" +
+                        "            base64data = reader.result;" +
+                        "            xec2D.getBase64FromBlobData(base64data);" +
+                        "        }" +
+                        "    }" +
+                        "};" +
+                        "xhr.send();";
+            }
+            return "javascript: console.log('It is not a Blob URL');";
+        }
+        private void convertBase64StringToFileAndStoreIt(String base64PDf) throws IOException {
+            final int notificationId = 1;
+            String currentDateTime = DateFormat.getDateTimeInstance().format(new Date());
+            String newTime = currentDateTime.replaceFirst(", ","_").replaceAll(" ","_").replaceAll(":","-");
+            Log.d("fileMimeType ====> ",fileMimeType);
+            MimeTypeMap mimeTypeMap = MimeTypeMap.getSingleton();
+            String extension = mimeTypeMap.getExtensionFromMimeType(fileMimeType);
+            final File dwldsPath = new File(Environment.getExternalStoragePublicDirectory(
+                    Environment.DIRECTORY_DOWNLOADS) + "/" + newTime + "_." + extension);
+            String regex = "^data:" + fileMimeType + ";base64,";
+            byte[] pdfAsBytes = Base64.decode(base64PDf.replaceFirst(regex, ""), 0);
+            try {
+                FileOutputStream os = new FileOutputStream(dwldsPath);
+                os.write(pdfAsBytes);
+                os.flush();
+                os.close();
+            } catch (Exception e) {
+                Toast.makeText(context, "FAILED TO DOWNLOAD THE FILE!", Toast.LENGTH_SHORT).show();
+                e.printStackTrace();
+            }
+            if (dwldsPath.exists()) {
+                Intent intent = new Intent();
+                intent.setAction(Intent.ACTION_VIEW);
+                Uri apkURI = FileProvider.getUriForFile(context,context.getApplicationContext().getPackageName() + ".provider", dwldsPath);
+                intent.setDataAndType(apkURI, MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension));
+                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                PendingIntent pendingIntent = PendingIntent.getActivity(context,1, intent, PendingIntent.FLAG_CANCEL_CURRENT);
+                String CHANNEL_ID = "MYCHANNEL";
+
+                final NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+                if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    NotificationChannel notificationChannel = new NotificationChannel(CHANNEL_ID, "name", NotificationManager.IMPORTANCE_LOW);
+                    Notification notification = new Notification.Builder(context, CHANNEL_ID)
+                            .setContentText("You have got something new!")
+                            .setContentTitle("File downloaded")
+                            .setContentIntent(pendingIntent)
+                            .setChannelId(CHANNEL_ID)
+                            .setSmallIcon(android.R.drawable.stat_sys_download_done)
+                            .build();
+                    if (notificationManager != null) {
+                        notificationManager.createNotificationChannel(notificationChannel);
+                        notificationManager.notify(notificationId, notification);
+                    }
+                }
+            }
+            Toast.makeText(context, "FILE DOWNLOADED!", Toast.LENGTH_SHORT).show();
+        }
+
     }
 
 
@@ -367,6 +580,29 @@ public class MyWebView extends AdvancedWebView {
 //    public boolean capturePullDown = false;
     private final float refreshThreshold = 200;
 
+    public MyJavaScriptInterface mJSInterface = null;
+
+    public boolean safeBrowsingIsInitialized = false;
+
+    public void wxStartSafeBrowsing(){
+
+        if(mActivity == null )return;
+
+
+        if (WebViewFeature.isFeatureSupported(WebViewFeature.START_SAFE_BROWSING)) {
+            WebViewCompat.startSafeBrowsing(mActivity, new ValueCallback<Boolean>() {
+                @Override
+                public void onReceiveValue(Boolean success) {
+                    Log.d("LIHKGWebView", "WebView.startSafeBrowsing: "+success);
+                    safeBrowsingIsInitialized = true;
+                    if (!success) {
+                        Log.e("LIHKGWebView", "Unable to initialize Safe Browsing!");
+                    }
+                }
+            });
+        }
+    }
+
     @SuppressLint("ClickableViewAccessibility")
     @Override
     protected void init(Context context) {
@@ -375,12 +611,15 @@ public class MyWebView extends AdvancedWebView {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             // https://developer.android.com/develop/ui/views/layout/webapps/managing-webview?hl=en
             MyWebView.this.setRendererPriorityPolicy(WebView.RENDERER_PRIORITY_BOUND, true);
+            Log.i("LIHKGWebView","setRendererPriorityPolicy - RENDERER_PRIORITY_BOUND");
         }
 
 
+        WebView webView = MyWebView.this;
+
         // Set an OnScrollChangeListener to enable/disable SwipeRefreshLayout based on the WebView scroll position
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            MyWebView.this.setOnScrollChangeListener(new OnScrollChangeListener() {
+            webView.setOnScrollChangeListener(new OnScrollChangeListener() {
                 @Override
                 public void onScrollChange(View v, int scrollX, int scrollY, int oldScrollX, int oldScrollY) {
                     //
@@ -389,8 +628,6 @@ public class MyWebView extends AdvancedWebView {
                 }
             });
 
-
-            WebView webView = MyWebView.this;
 
             webView.setNestedScrollingEnabled(true); // important
 
@@ -434,10 +671,47 @@ public class MyWebView extends AdvancedWebView {
 
         }
 
+        webView.setOnCreateContextMenuListener(new OnCreateContextMenuListener() {
+            @Override
+            public void onCreateContextMenu(ContextMenu menu, View v, ContextMenu.ContextMenuInfo menuInfo) {
+                //
+            }
+        });
+
+//        webView.setOnLongClickListener(new View.OnLongClickListener() {
+//            @Override
+//            public boolean onLongClick(View v) {
+//                final WebView.HitTestResult result = ((WebView) v).getHitTestResult();
+//
+//                if (result.getType() == HitTestResult.EDIT_TEXT_TYPE) {
+//
+//                    // Show text selection menu
+//
+//                    // Hide text selection menu after delay
+//                    new Handler().postDelayed(new Runnable() {
+//                        @Override
+//                        public void run() {
+//                            Log.i("SSC","delay"+ inputConnection.performContextMenuAction(0));
+//                            if(inputConnection!=null){
+////                                inputConnection.sendKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ESCAPE));
+////                                inputConnection.sendKeyEvent(new KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ESCAPE));
+//                            }
+////                            webView.clearFocus();
+//                        }
+//                    }, 1000);  // 1 second delay
+//
+//                    return false;
+//                }
+//                return false;
+//            }
+//        });
+
         MyJavaScriptInterface jsInterface = new MyJavaScriptInterface(context);
 //        Log.i("SS","SS11");
 //        if(Build.VERSION.SDK_INT>17) {
             this.addJavascriptInterface(jsInterface, CONTROLLER_JS_INTERFACE);
+        mJSInterface = jsInterface;
+        Log.i("mJSInterface","mJSInterface");
 //        }
 
 //        if(WebViewFeature.isFeatureSupported(WebViewFeature.FORCE_DARK)) {
@@ -449,6 +723,13 @@ public class MyWebView extends AdvancedWebView {
 //        }
 
         WebSettings webSettings = this.getSettings();
+
+        webView.setInitialScale(100);
+        // for image display
+        webSettings.setLoadWithOverviewMode(true); // 缩放至屏幕的大小
+        webSettings.setUseWideViewPort(true); //将图片调整到适合webview的大小
+
+
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             if (WebViewFeature.isFeatureSupported(WebViewFeature.ALGORITHMIC_DARKENING)) {
@@ -466,15 +747,17 @@ public class MyWebView extends AdvancedWebView {
 
         webSettings.setBlockNetworkLoads(false);
         webSettings.setBlockNetworkImage(false);
-        webSettings.setSupportMultipleWindows(true);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            webSettings.setDisabledActionModeMenuItems(0);
-        }
 
         webSettings.setCacheMode(WebSettings.LOAD_DEFAULT);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            webSettings.setSafeBrowsingEnabled(false);
+//        if(true)return;
+//        webSettings.setSupportMultipleWindows(true);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            webSettings.setDisabledActionModeMenuItems(WebSettings.MENU_ITEM_NONE);
         }
+
+//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+//            webSettings.setSafeBrowsingEnabled(false);
+//        }
 
 
 
@@ -654,6 +937,10 @@ public class MyWebView extends AdvancedWebView {
                     // handle error
                 }
             }
+            AD_HOSTS.add("chromestatus.com");
+            AD_HOSTS.add("www.chromestatus.com");
+            AD_HOSTS.add("cloudflareinsights.com");
+            AD_HOSTS.add("static.cloudflareinsights.com");
 //            AD_HOSTS = adsSet;
 //            return adsSet;
         }
@@ -696,9 +983,11 @@ public class MyWebView extends AdvancedWebView {
     @SuppressLint("ClickableViewAccessibility")
     @Override
     public boolean onTouchEvent(MotionEvent event) {
-        if (event.getAction() == MotionEvent.ACTION_DOWN) {
-            getParent().requestDisallowInterceptTouchEvent(true);
-        }
+//        if (event.getAction() == MotionEvent.ACTION_DOWN) {
+//            getParent().requestDisallowInterceptTouchEvent(true);
+//        }
+//        return super.onTouchEvent(event);
+        requestDisallowInterceptTouchEvent(true);
         return super.onTouchEvent(event);
     }
 
@@ -722,7 +1011,60 @@ public class MyWebView extends AdvancedWebView {
 
     }
 
+    private void downloadBlobContent(String blobUrl) {
+        /*
+        String fileName = "file_" + System.currentTimeMillis() + ".pdf"; // Customize this based on your file type and desired name
+        String mimeType = "application/pdf"; // Set MIME type based on the file type you want to download
+
+        String js = "fetch('" + blobUrl + "')" +
+                ".then(resp => resp.blob())" +
+                ".then(blob => {" +
+                "  var reader = new FileReader();" +
+                "  reader.readAsDataURL(blob);" +
+                "  reader.onloadend = function() {" +
+                "    var base64data = reader.result;" +
+                "    AndroidInterface.onBlobDataReceived('" + fileName + "', '" + mimeType + "', base64data);" +
+                "  };" +
+                "});";
+        */
+
+        String js = "fetch('" + blobUrl + "')" +
+                ".then(resp => console.log(type))";
+
+        MyWebView webView = MyWebView.this;
+
+        webView.evaluateJavascript(js, null);
+    }
+
+
+
     public class BWebViewClient extends AWebViewClient{
+
+        // Automatically go "back to safety" when attempting to load a website that
+        // Google has identified as a known threat. An instance of WebView calls
+        // this method only after Safe Browsing is initialized, so there's no
+        // conditional logic needed here.
+        @Override
+        public void onSafeBrowsingHit(WebView view, WebResourceRequest request,
+                                      int threatType, SafeBrowsingResponseCompat callback) {
+            // The "true" argument indicates that your app reports incidents like
+            // this one to Safe Browsing.
+            if (WebViewFeature.isFeatureSupported(WebViewFeature.SAFE_BROWSING_RESPONSE_BACK_TO_SAFETY)) {
+                callback.backToSafety(true);
+                Toast.makeText(view.getContext(), "Unsafe web page blocked.",
+                        Toast.LENGTH_LONG).show();
+            }
+        }
+
+        @Override
+        public boolean shouldOverrideUrlLoading(WebView view, String url) {
+            if (url.startsWith("blob:")) {
+                downloadBlobContent(url);
+                return true; // Prevent WebView from loading the URL
+            }
+            return super.shouldOverrideUrlLoading(view, url);
+        }
+
 
         @Override
         public boolean onRenderProcessGone(WebView view, RenderProcessGoneDetail detail) {
@@ -738,7 +1080,7 @@ public class MyWebView extends AdvancedWebView {
                     MyWebView mWebView = MyWebView.this;
 
                     if (mWebView != null && !isKilled) {
-                        if(mFragment != null && !mFragment.fragmentDead && mFragment.mWebView != null){
+                        if(mFragment != null && !mFragment.fragmentDead && mFragment.getMyWebView() != null){
                             mFragment.killWebView();
                         }else {
                             mWebView.destroy();
@@ -896,8 +1238,14 @@ public class MyWebView extends AdvancedWebView {
         public void onPageFinished(WebView webview, String url) {
             super.onPageFinished(webview, url);
 
+            if(url != null && url.contains("lih") && url.contains("kg")){
+                //
+            }else{
+                return;
+            }
+
             SwipeRefreshLayout swipeRefreshLayout = (SwipeRefreshLayout)mFragment.getView().findViewById(R.id.swipe_refresh_layout);
-            swipeRefreshLayout.setRefreshing(false);
+            if(swipeRefreshLayout.isRefreshing()) swipeRefreshLayout.setRefreshing(false);
 
 
             if(strUserScript06 == null) strUserScript06 = readTextFile(mActivity.getApplicationContext(),R.raw.lihkg_fix_events,true);;
@@ -1117,6 +1465,34 @@ public class MyWebView extends AdvancedWebView {
                     }
                 });
             }
+
+
+
+
+
+
+
+
+
+
+//
+//            if(strUserScript08 == null) strUserScript08 = readTextFile(mActivity.getApplicationContext(),R.raw.webview_contextmenu,true);;
+////                Log.i("sText",s.length()+"");
+//
+//            if(strUserScript08 != null && strUserScript08.length() > 12) {
+//                String s = strUserScript08;
+//
+//                evaluateJavascriptX(webview, s, "mer63", new ValueCallback<String>() {
+//                    @Override
+//                    public void onReceiveValue(String value) {
+//
+//                        if(value.contains("1")) {
+//                            Log.i("sText", "userscript 8");
+//                        }
+//                        //
+//                    }
+//                });
+//            }
 
 
 

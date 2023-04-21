@@ -41,6 +41,28 @@
      min-height: initial;
 }
 
+[data-post-id] ~ ._3t1IIUwX87Q7giYt9CBgsT > div[id]:empty:only-child {
+    display: none !important;
+    max-height:0 !important;
+    position: absolute !important;
+    height:0 !important;
+}
+
+[data-post-id] ~ ._3t1IIUwX87Q7giYt9CBgsT {
+     min-height: initial;
+}
+
+[data-post-id] ~ ._3t1IIUwX87Q7giYt9CBgsT * {
+     min-height: initial;
+}
+
+[data-post-id] ~ ._3t1IIUwX87Q7giYt9CBgsT ins:empty {
+    display: none !important;
+    max-height:0 !important;
+    position: absolute !important;
+    height:0 !important;
+}
+
 
 /* search page - title */
 /* .isPageSearch div#app > nav[class]{
@@ -265,3 +287,366 @@ body .Po8iCa0b9ZUovZ9Ofa_Gk:hover,
 body .eaWAxpidGy5I-mbexmmZy:hover {
     background-color: rgba(128,128,128,0.0);
 }
+
+
+
+
+/* editor related */
+
+body [data-tip] {
+    -webkit-touch-callout:none !important;                /* prevent callout to copy image, etc when tap to hold */
+    -webkit-text-size-adjust:none !important;             /* prevent webkit from resizing text to fit */
+    -webkit-tap-highlight-color:rgba(0,0,0,0) !important; /* prevent tap highlight color / shadow */
+    -webkit-user-select:none !important;                  /* prevent copy paste, to allow, change 'none' to 'text' */
+}
+
+/* remove toolbar icon hover color */
+body .ImvuTNPB8Llr0GkQJmKuK>span:hover {
+    color:inherit;
+}
+
+
+/* toolbar icon color when clicked */
+body .ImvuTNPB8Llr0GkQJmKuK>span._19Ywgg4d5i4DQW6utjqGCk {
+    color: #fbc308;
+}
+
+
+/* ui change for editor toolbar panel (left to top) */
+[data-editor-root] ~ ul._24QwwVkZYxCCSyOU0moUyg {
+    position: fixed;
+    top:4px;
+    left:4px;
+    right:4px;
+    width:auto;
+    height: calc( 5em + 8px );
+    z-index:17;
+    display:flex;
+    flex-direction:row;
+    align-items: center;
+    background-color: var(--tool-panel-color) !important;
+    flex-wrap: wrap;
+    justify-content: space-evenly;
+    padding-left: 16px;
+    padding-right: 16px;
+    padding-top: 2px;
+    padding-bottom: 2px;
+    transition: none !important;
+}
+
+body {
+    --tool-panel-color: rgb(233, 233, 233);
+    --tool-panel-li-color: #fff;
+}
+
+body[data-app-dm] {
+    --tool-panel-color: rgb(20, 20, 27);
+    --tool-panel-li-color: #000;
+}
+
+
+/* ui change for li entries of editor toolbar panel (left to top) */
+[data-editor-root] ~ ul._24QwwVkZYxCCSyOU0moUyg li {
+    padding: 2px;
+    padding-left: 8px;
+    padding-right: 8px;
+    margin: 2px;
+    background-color: var(--tool-panel-li-color);
+    border-radius: 8px;
+    border: 1px solid rgba(122, 122, 122, 0.6);
+    transform: scale(0.96);
+    transform-origin: 0 0;
+}
+
+
+/* ui change for editor toolbar */
+.lihkg-editor-container .ImvuTNPB8Llr0GkQJmKuK {
+
+    display: flex;
+    flex-wrap: wrap;
+    flex-direction: row;
+    justify-content: space-evenly;
+    align-items: center;
+
+    max-width: calc( 9 * 35.2px );
+    margin: 0 auto;
+    padding:0;
+    box-sizing: border-box;
+
+}
+
+
+/* fix icon position in editor toolbar */
+.lihkg-editor-container .ImvuTNPB8Llr0GkQJmKuK span[data-tip] {
+
+    display:inline-flex;
+
+    align-items: center;
+    justify-items: center;
+    align-content: center;
+    justify-content: center;
+}
+
+/* fix icon position issues in editor topbar */
+.lihkg-editor-topbar > * {
+    display: inline-flex !important;
+    align-items: center;
+}
+
+/* ui adjust for title field */
+.lihkg-editor-container ._2PWs2HPwawYhSrT60wjDGf{
+    box-sizing: border-box;
+    padding: 0;
+    margin: 0;
+    height: auto;
+    padding-left: 12px;
+    padding-right: 12px;
+    padding-top: 6px;
+}
+
+/* remove outline appearance for input/textarea inside editor area, such as title field */
+.lihkg-editor-container input, .lihkg-editor-container textarea,
+ .lihkg-editor-container input:focus, .lihkg-editor-container textarea:focus{
+    -webkit-touch-callout:none !important;                /* prevent callout to copy image, etc when tap to hold */
+    -webkit-text-size-adjust:none !important;             /* prevent webkit from resizing text to fit */
+    -webkit-tap-highlight-color:rgba(0,0,0,0) !important; /* prevent tap highlight color / shadow */
+    -webkit-user-select:none !important;                  /* prevent copy paste, to allow, change 'none' to 'text' */
+
+    -webkit-appearance: none !important;
+    appearance: none !important;
+    outline: none !important;
+}
+
+
+/* overscroll-behavior: contain; */
+/* https://developer.mozilla.org/en-US/docs/Web/CSS/overscroll-behavior */
+
+.lihkg-editor-container, .lihkg-editor-container *, /* editor */
+._2AXCdyGktboKS8qRqewk1z, ._2AXCdyGktboKS8qRqewk1z *, /* drawer category */
+.qS4Iosr432bIbXcjtpG0p, .qS4Iosr432bIbXcjtpG0p * /* media archive */
+.Fjkeu8rp1XE7mqA3uW1tY, .Fjkeu8rp1XE7mqA3uW1tY *,
+.lihkg-popup-view, .lihkg-popup-view *
+ {
+    overscroll-behavior: contain;
+}
+
+
+/* no transparent glass (visual) effect for drawer */
+
+body {
+    --drawer-background: #f0f1f0;
+    --bottom-bar-background: #f2cd66;
+}
+
+body[data-app-dm] {
+    --drawer-background: #1e1e1e;
+    --bottom-bar-background: #0b0b0a;
+}
+
+
+/* remove visual effect for drawer  */
+._2avg7BNCZG5kjB9vMIsfGj {
+    background: var(--drawer-background) !important;
+    backdrop-filter: initial !important;
+    will-change: initial !important;
+}
+
+/* will-change is shit */
+*, [class], [id] {
+    will-change: initial !important;
+}
+
+
+/* contain for general tags  */
+img, br, i, b, s, del, a {
+    contain: content;
+}
+
+.qoAmEqNpZRLf2KVKZ8DsC .wQ4Ran7ySbKd8PdMeHZZR, /* thread entries */
+._3jxQCFWg9LDtkSkIVLzQ8L ._36ZEkSvpdj_igmog0nluzh, /* reply entries */
+._3jxQCFWg9LDtkSkIVLzQ8L ._1oAZ-dSJQlxsXi9LmOBolw /* page selector */ {
+    contain: content;
+}
+
+
+/* contain for fix size scroller (categories) inside drawer  */
+._2AXCdyGktboKS8qRqewk1z {
+    contain: strict;
+}
+
+
+/* contain for fix size scroller  */
+#app > .Vo7qCfQ1zcxviGmeMySZl, ._1rRoFMWEk02kX7TiFrrpTy , ._1rRoFMWEk02kX7TiFrrpTy ._24QwwVkZYxCCSyOU0moUyg {
+    contain: strict;
+}
+
+
+/* contain for main page scrollview  */
+.qoAmEqNpZRLf2KVKZ8DsC, .C_300Fi04lLpFu_ZznJqq, #leftPanel{
+    contain:content;
+}
+
+/* contain for #app  */
+#app {
+    contain: none;
+}
+
+/* contain for drawer backdrop  */
+b._3DGiuOeHzi-9xAeU4GPqcb {
+    contain: strict;
+     user-select: none !important;
+     pointer-events: none !important;
+     touch-action: none !important;
+}
+
+
+/* remove visual effect for bottom bar  */
+._1DZ_Nn0pmLuOkdbW3sB_4B {
+
+    text-shadow: initial !important;
+    /*
+     <<< no big issue for performance >>>
+    backdrop-filter: initial !important;
+    background: var(--bottom-bar-background) !important;
+    */
+}
+
+/* fix button in bottom bar */
+._1DZ_Nn0pmLuOkdbW3sB_4B * {
+
+    -webkit-touch-callout:none !important;                /* prevent callout to copy image, etc when tap to hold */
+    -webkit-text-size-adjust:none !important;             /* prevent webkit from resizing text to fit */
+    -webkit-tap-highlight-color:rgba(0,0,0,0) !important; /* prevent tap highlight color / shadow */
+    -webkit-user-select:none !important;                  /* prevent copy paste, to allow, change 'none' to 'text' */
+
+    -webkit-appearance: none !important;
+    appearance: none !important;
+    outline: none !important;
+}
+
+/* fix icon in bottom bar */
+._1DZ_Nn0pmLuOkdbW3sB_4B > span {
+
+    display:inline-flex;
+
+    align-items: center;
+    justify-items: center;
+    align-content: center;
+    justify-content: center;
+}
+
+
+#app > ._1H_MPAqZWxI0DjGT6LORkT,
+#app > ._1H_MPAqZWxI0DjGT6LORkT > b._3DGiuOeHzi-9xAeU4GPqcb,
+#app > ._1H_MPAqZWxI0DjGT6LORkT > div._2avg7BNCZG5kjB9vMIsfGj {
+
+    contain: strict;
+    position: fixed !important;
+    top:0 !important;
+    bottom:0 !important;
+
+}
+
+
+/* fix lihkg design issue - post reply trimmed */
+
+[data-post-id] small._1VcuFUmnOEK51TsshmrnJM {
+    /*align-items: flex-start;*/
+
+    flex-wrap: wrap;
+    row-gap: 6px;
+
+
+    justify-content: end;
+
+}
+
+
+[data-post-id] small._1VcuFUmnOEK51TsshmrnJM > div:last-of-type {
+    flex-grow: 99;
+}
+
+[data-post-id] small._1VcuFUmnOEK51TsshmrnJM > div:last-of-type ~ i[class] {
+    margin-left: auto;
+    padding-right: 0;
+}
+
+/*
+[data-post-id] small._1VcuFUmnOEK51TsshmrnJM ._1d3Z5jQRq3WnuIm0hnMh0c {
+    flex-wrap: wrap;
+    align-items: center;
+}
+*/
+
+/*
+[data-post-id] small._1VcuFUmnOEK51TsshmrnJM ._1d3Z5jQRq3WnuIm0hnMh0c .oStuGCWyiP2IrBDndu1cY{
+    margin: 0 0 0 auto;
+}
+*/
+
+/* ---------------- */
+
+/* link element in notification panel */
+
+li._18_tUzwZfna4i5-VCnCpcJ > a[href] {
+    pointer-events: auto !important;
+}
+li._18_tUzwZfna4i5-VCnCpcJ > a[href] * {
+    pointer-events: none !important;
+}
+
+/* ----------- */
+
+/* emoji text selectable in editor */
+/*
+[contenteditable] [data-ic="hkgmoji"], [contenteditable] [data-ic*="moji"] {
+    -webkit-touch-callout: text !important;
+    -webkit-user-select: text !important;
+    -khtml-user-select: text !important;
+    -moz-user-select: text !important;
+    -ms-user-select: text !important;
+    user-select: text !important;
+    cursor: text !important;
+    pointer-events: auto !important;
+   touch-action: none !important;
+}
+*/
+
+
+._1xaNo-2jhq5KooKoBBRKwe>div>.ProseMirror p [data-ic] {
+    display:inline !important;
+    pointer-events:auto !important;
+
+
+    -webkit-touch-callout: text !important;
+    -webkit-user-select: text !important;
+    -khtml-user-select: text !important;
+    -moz-user-select: text !important;
+    -ms-user-select: text !important;
+    user-select: text !important;
+    cursor: text !important;
+
+    }
+._1xaNo-2jhq5KooKoBBRKwe>div>.ProseMirror p [data-ic] img{
+    display:inline !important;
+    pointer-events:none !important;
+
+
+
+    -webkit-touch-callout: text !important;
+    -webkit-user-select: text !important;
+    -khtml-user-select: text !important;
+    -moz-user-select: text !important;
+    -ms-user-select: text !important;
+    user-select: text !important;
+    cursor: text !important;
+    }
+
+    ._1xaNo-2jhq5KooKoBBRKwe>div>.ProseMirror p [data-ic]::after{
+        display:inline;
+        content:'\u200b';
+    }
+    ._1xaNo-2jhq5KooKoBBRKwe>div>.ProseMirror p [data-ic]::before{
+        display:inline;
+        content:'\u200b';
+    }

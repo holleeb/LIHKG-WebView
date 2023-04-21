@@ -23,6 +23,8 @@
     let touchAsClick = false;
 
     const preventTouchStart = evt => {
+
+
         touchAsClick = false;
         if(evt && evt.isTrusted){
 
@@ -43,10 +45,6 @@
 
 
         }
-        if (window.getSelection().isCollapsed === false) {
-            evt.stopPropagation();
-            evt.stopImmediatePropagation();
-        }
     };
 
     document.addEventListener('touchstart', preventTouchStart, {
@@ -56,6 +54,7 @@
 
 
     const touchEndHandler = (evt)=>{
+
 
 
         if(touchAsClick && evt.isTrusted){
@@ -113,6 +112,11 @@
         const distanceSquared = deltaX * deltaX + deltaY * deltaY;
         const dSquared = d * d;
 
+
+        if (window.getSelection().isCollapsed === false) {
+            mTouch0.lockXY = true;
+        }
+
         if (mTouch0.lockXY) {
             touch.clientX = mTouch0.clientX;
             touch.clientY = mTouch0.clientY;
@@ -158,6 +162,10 @@
                 if (type === 'touchmove' && (func + "").indexOf(".drawer.") > 4) func.isOpenDrawerFunc = true;
                 const gunc = (e) => {
 
+
+                    // photo page - altered -> cannot swipe
+                    if(document.querySelector('.Fjkeu8rp1XE7mqA3uW1tY > ._1fEx42oSb0uVYu_3Dhqm95 > i.i-close')) return func.call(this, e);
+
                     e = {
                         isTrusted: e.isTrusted,
                         touches: e.touches[0] ? [{
@@ -170,7 +178,12 @@
                         stopImmediatePropagation: e.stopImmediatePropagation.bind(e),
                         cancelable: e.cancelable
                     };
-                    if (type === 'touchstart' && mTouch0 === null) mTouch0 = e.touches[0];
+                    if (type === 'touchstart' && mTouch0 === null) {
+                        mTouch0 = e.touches[0];
+                        if (window.getSelection().isCollapsed === false) {
+                            mTouch0.lockXY = true;
+                        }
+                    }
                     else if (mTouch0 !== null && e.touches[0]) {
                         e.touches[0] = fixTouch(e.touches[0]);
                     }
@@ -195,5 +208,31 @@
             return this.euLI9.apply(this, arguments);
         }
     })();
+
+
+    let cidUnload = 0;
+
+    window.addEventListener("beforeunload", function (event) {
+
+        if (typeof xec2D !== "object") return;
+        cidUnload = setTimeout(()=>{
+            cidUnload = 0;
+            if (typeof xec2D === "object"){
+                xec2D.cancelRefresh();
+            }
+        }, 80)
+    }, true);
+
+
+    window.addEventListener("unload", function (event) {
+       if(cidUnload>0) clearTimeout(cidUnload);
+    }, true);
+
+
+
+
+
+
+
 
 })();
