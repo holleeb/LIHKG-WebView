@@ -16,13 +16,6 @@
 
 package com.culefa.android.LIHKGWebView.ui.main;
 
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.app.AppCompatDelegate;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
-import androidx.core.view.WindowCompat;
-import androidx.core.view.WindowInsetsControllerCompat;
-
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
@@ -35,12 +28,6 @@ import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.fragment.app.Fragment;
-import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
-
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
@@ -48,6 +35,7 @@ import android.util.AttributeSet;
 import android.util.Log;
 import android.view.ContextMenu;
 import android.view.LayoutInflater;
+import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
@@ -57,12 +45,25 @@ import android.webkit.URLUtil;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.widget.Button;
+import android.widget.PopupMenu;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.widget.Toast;
 import android.window.OnBackInvokedCallback;
 import android.window.OnBackInvokedDispatcher;
 
-import com.culefa.android.LIHKGWebView.MainActivity;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AppCompatDelegate;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
+import androidx.fragment.app.Fragment;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
+
+import com.culefa.android.LIHKGWebView.MainActivityBase;
 import com.culefa.android.LIHKGWebView.R;
 import com.culefa.android.LIHKGWebView.ui.webview.MyWebView;
 import com.culefa.android.LIHKGWebView.ui.webview.MyWebViewRef;
@@ -70,6 +71,7 @@ import com.culefa.android.LIHKGWebView.ui.webview.MyWebViewRef;
 import java.lang.ref.WeakReference;
 import java.util.HashMap;
 import java.util.Locale;
+import java.util.Objects;
 
 
 public class MainFragment extends Fragment implements MyWebView.Listener {
@@ -77,13 +79,19 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
     public MyWebViewRef mWebViewRef = null;
 //    public Boolean overrideDarkMode = null;
 //    public Boolean currentDarkMode = null;
+    public ViewGroup mWebViewParent = null;
+    public TextView mMessage;
+    public HashMap<Integer, String> downloadList = new HashMap<Integer, String>();
+    public Configuration previousConfig = null;
+    public ImageHandler.ContextDomData webViewContextDomData = null;
+    public boolean fragmentDead = false;
+    ImageHandler imgHandler = null;
+    int downloadId = 0;
+    private ProgressBar progressBar = null;
 
     public static MainFragment newInstance() {
         return new MainFragment();
     }
-
-
-    ImageHandler imgHandler = null;
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -96,49 +104,43 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
 
     }
 
-    public MyWebView getMyWebView(){
+    public MyWebView getMyWebView() {
         MyWebView mWebView = null;
-        if(mWebViewRef != null) mWebView = mWebViewRef.get();
+        if (mWebViewRef != null) mWebView = mWebViewRef.get();
         return mWebView;
     }
 
     @Override
-    public void onSaveInstanceState(@NonNull Bundle outState )
-    {
+    public void onSaveInstanceState(@NonNull Bundle outState) {
         MyWebView mWebView = getMyWebView();
         Log.i("LIHKGWebView", "onSaveInstanceState");
-        MainActivity mainActivity = (MainActivity) getActivity();
-        if(mainActivity != null){
+        MainActivityBase mainActivityBase = (MainActivityBase) getActivity();
+        if (mainActivityBase != null) {
 
-            Bundle webViewBundle = mainActivity.webViewBundleRef.get();
-            if(webViewBundle == null) {
-                mainActivity.webViewBundleRef = new WeakReference<>(new Bundle());
-                webViewBundle = mainActivity.webViewBundleRef.get();
-            }else if(mWebView != null){
+            Bundle webViewBundle = mainActivityBase.webViewBundleRef.get();
+            if (webViewBundle == null) {
+                mainActivityBase.webViewBundleRef = new WeakReference<>(new Bundle());
+                webViewBundle = mainActivityBase.webViewBundleRef.get();
+            } else if (mWebView != null) {
                 webViewBundle.clear();
             }
 
-            if(webViewBundle != null) {
-                if(mWebView != null) mWebView.saveState(webViewBundle);
+            if (webViewBundle != null) {
+                if (mWebView != null) mWebView.saveState(webViewBundle);
                 outState.putBundle("webViewState", webViewBundle);
-            }else{
+            } else {
                 outState.putBundle("webViewState", null);
             }
         }
         super.onSaveInstanceState(outState);
     }
 
-
-
     @Override
-    public void onViewStateRestored(@Nullable Bundle savedInstanceState)
-    {
+    public void onViewStateRestored(@Nullable Bundle savedInstanceState) {
         Log.i("LIHKGWebView", "onViewStateRestored");
         super.onViewStateRestored(savedInstanceState);
         refreshColors();
     }
-
-
 
     @Override
     public void onAttach(@NonNull Context context) {
@@ -168,7 +170,7 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
     @Override
     public void onMultiWindowModeChanged(boolean isInMultiWindowMode) {
         super.onMultiWindowModeChanged(isInMultiWindowMode);
-        Log.i("LIHKGWebView", "onMultiWindowModeChanged - "+ isInMultiWindowMode);
+        Log.i("LIHKGWebView", "onMultiWindowModeChanged - " + isInMultiWindowMode);
     }
 
     @Override
@@ -177,7 +179,7 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
         super.onStart();
         Log.i("LIHKGWebView", "onStart");
 
-        if(mWebView != null && mWebView.getParent() == null && mWebViewParent != null){
+        if (mWebView != null && mWebView.getParent() == null && mWebViewParent != null) {
             mWebViewParent.addView(mWebViewParent);
         }
 
@@ -195,14 +197,12 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
 //        }
     }
 
-    public ViewGroup mWebViewParent = null;
-
     @Override
     public void onStop() {
         MyWebView mWebView = getMyWebView();
         Log.i("LIHKGWebView", "onStop");
         mWebViewParent = null;
-        if(mWebView != null && mWebView.getParent() != null){
+        if (mWebView != null && mWebView.getParent() != null) {
             mWebViewParent = (ViewGroup) mWebView.getParent();
         }
 
@@ -214,8 +214,6 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
 //                killWebView();
 //            }
 //        },300);
-
-
 
 
 //        if(mWebViewParent == null && mWebView != null) {
@@ -232,27 +230,193 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
 
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+
+
+//        mWebView = (MyWebView) view.findViewById(R.id.webview);
+
+        mWebViewRef = MyWebViewRef.createWebViewRef((MyWebView) view.findViewById(R.id.webview));
+
         MyWebView mWebView = getMyWebView();
+        progressBar = (ProgressBar) view.findViewById(R.id.progress_bar);
+
+//        mWebView.restoreState( ((MainActivity) requireActivity()).webViewBundle);
+//
+//        try{
+//
+//            Log.i("SSX", mWebView.getUrl()+"");
+//        }catch (Throwable e){
+//
+//        }
+
+//        requireActivity().getOnBackPressedDispatcher().addCallback(new OnBackPressedCallback(true) {
+//            @Override
+//            public void handleOnBackPressed() {
+//
+//            }
+//        });
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            requireActivity().getOnBackInvokedDispatcher().registerOnBackInvokedCallback(OnBackInvokedDispatcher.PRIORITY_DEFAULT, new OnBackInvokedCallback() {
+                @Override
+                public void onBackInvoked() {
+                    MyWebView mWebView = getMyWebView();
+
+                    if (mWebView != null && mWebView.canGoBack()) mWebView.goBack();
+                    else if (getActivity() != null) requireActivity().onBackPressed();
+                }
+            });
+        }
+
+//        ViewCompat.setOnReceiveContentListener(mWebView, mWebView.MIME_TYPES, MyReceiver())
+
+
+        SwipeRefreshLayout swipeRefreshLayout = (SwipeRefreshLayout) view.findViewById(R.id.swipe_refresh_layout);
+
+
+        swipeRefreshLayout.setEnabled(true);
+
+        swipeRefreshLayout.setOnChildScrollUpCallback(new SwipeRefreshLayout.OnChildScrollUpCallback() {
+            @Override
+            public boolean canChildScrollUp(@NonNull SwipeRefreshLayout parent, @Nullable View child) {
+
+                MyWebView mWebView = getMyWebView();
+                if (getActivity() == null || mWebView == null) return false;
+//                if(mWebView == null) return false;
+////                Log.i("canChildScrollUp", mWebView.capturePullDown+"");
+////                if(!mWebView.capturePullDown) return false;
+                return mWebView.canScrollVertically(-1);
+            }
+        });
+        registerForContextMenu(mWebView);
+
+//        if (savedInstanceState != null) {
+//            mWebView.restoreState(savedInstanceState);
+//        }
+
+        MainActivityBase activity = (MainActivityBase) getContext();
+
+        if (savedInstanceState == null) {
+            mWebView.setActivity(((AppCompatActivity) getActivity()));
+            mWebView.setFragment(this);
+            mWebView.setDefaultWebViewClient(mWebView.new BWebViewClient());
+            mWebView.setDefaultWebChromeClient(mWebView.new BWebChromeClient());
+            mWebView.setDownloadListener(mWebView.new ADownloadListener());
+
+            mWebView.wxStartSafeBrowsing();
+
+
+            swipeRefreshLayout.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
+                @Override
+                public void onRefresh() {
+                    MyWebView mWebView = getMyWebView();
+
+                    mWebView.getSettings().setCacheMode(WebSettings.LOAD_NO_CACHE);
+                    mWebView.clearCache(true);
+                    mWebView.reload();
+
+                    mWebView.getSettings().setCacheMode(WebSettings.LOAD_DEFAULT);
+                }
+            });
+
+            mWebView.blockAds(new MyWebView.AdBlocker() {
+                {
+                    this.initAdsList(getResources().openRawResource(R.raw.pgl_yoyo_org));
+                }
+            });
+
+            mWebView.setListener((Activity) requireActivity(), this);
+
+            setupWebViewSettings();
+
+        }
+
+        boolean dontLoadURL = false;
+        if(activity.mStateBundle != null) {
+            Bundle stateBundle = null;
+            try {
+                stateBundle = activity.mStateBundle;
+                MyWebView myWebView = view.findViewById(R.id.webview);
+                myWebView.restoreState(stateBundle);
+                dontLoadURL = true;
+            }catch (Throwable ignored){
+
+            }finally {
+                if(stateBundle != null) {
+                    stateBundle.clear();
+                }
+            }
+            activity.mStateBundle = null;
+        }
+
+
+        if(!dontLoadURL){
+
+            if (mWebView.getUrl() == null || mWebView.getUrl().isEmpty()) {
+
+                String requestedUrl = getViewModel().webViewURL;
+                if (requestedUrl != null) {
+                    mWebView.loadUrl(requestedUrl);
+                } else {
+                    mWebView.loadUrl("https://www.lihkg.com/");
+                }
+
+            }
+        }
+
+        mMessage = (TextView) view.findViewById(R.id.message);
+//        mMessage.setText("1223");
+        startMemoryMonitor(1024 * 1024);
+        view.post(new Runnable() {
+            @Override
+            public void run() {
+                MyWebView mWebView = getMyWebView();
+
+                if (getActivity() == null || mWebView == null) return;
+                refreshColors();
+            }
+        });
+
+
+        TextView dropdownButton = view.findViewById(R.id.dropdown_button1);
+
+        if(Objects.equals(activity.myProfileId, "profile_1")){
+            dropdownButton.setText("Profile 1");
+        }else if(Objects.equals(activity.myProfileId, "profile_2")) {
+            dropdownButton.setText("Profile 2");
+        }else {
+            dropdownButton.setText("Settings");
+        }
+
+        dropdownButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showPopupMenu(v);
+            }
+        });
+
+
+//        MyWebView mWebView = getMyWebView();
         Log.i("LIHKGWebView", "onViewCreated");
         super.onViewCreated(view, savedInstanceState);
-        if(savedInstanceState != null && mWebView != null){
-            Bundle webViewBundle =  savedInstanceState.getBundle("webViewState");
-            if(webViewBundle != null){
-                mWebView.restoreState(webViewBundle);
+        if (savedInstanceState != null && mWebView != null) {
+            Bundle webViewBundle = savedInstanceState.getBundle("webViewState");
+            if (webViewBundle != null) {
+                try {
+                    mWebView.restoreState(webViewBundle);
+                }catch(Throwable ignored) {
+
+                }
+                webViewBundle.clear();
+                savedInstanceState.remove("webViewState");
             }
         }
     }
 
-
-
-    private ProgressBar progressBar = null;
-
     @SuppressLint("SetJavaScriptEnabled")
-    public void setupWebViewSettings(){
+    public void setupWebViewSettings() {
         MyWebView mWebView = getMyWebView();
 
-        if(getActivity() == null || mWebView == null) return;
-
+        if (getActivity() == null || mWebView == null) return;
 
 
 //        mWebView.setMixedContentAllowed(true); // cdn.lihkg.com
@@ -308,7 +472,6 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
         mWebView.clearHistory(); // キャッシュ・履歴の削除
 
 
-
         webSettings.setJavaScriptEnabled(true);
         webSettings.setLoadsImagesAutomatically(true);
         webSettings.setDomStorageEnabled(true);
@@ -336,22 +499,24 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
 
     }
 
+
+
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
 
 //        MyWebView mWebView = getMyWebView();
-        if(getActivity() == null) return null;
+        if (getActivity() == null) return null;
 
         requireActivity().getWindow().setFlags(
                 WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
                 WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED);
 
-        if(imgHandler == null){
-            imgHandler = new ImageHandler(){
+        if (imgHandler == null) {
+            imgHandler = new ImageHandler() {
                 {
-                    this.mContext= getActivity().getApplicationContext();
+                    this.mContext = getActivity().getApplicationContext();
                     this.mActivity = getActivity();
                     this.mFragment = MainFragment.this;
                 }
@@ -360,181 +525,62 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
 
         View view = inflater.inflate(R.layout.fragment_main, container, false);
 
-//        mWebView = (MyWebView) view.findViewById(R.id.webview);
-
-        mWebViewRef = MyWebViewRef.createWebViewRef((MyWebView) view.findViewById(R.id.webview));
-
-        MyWebView mWebView = getMyWebView();
-        progressBar = (ProgressBar) view.findViewById(R.id.progress_bar);
-
-//        mWebView.restoreState( ((MainActivity) requireActivity()).webViewBundle);
-//
-//        try{
-//
-//            Log.i("SSX", mWebView.getUrl()+"");
-//        }catch (Throwable e){
-//
-//        }
-
-//        requireActivity().getOnBackPressedDispatcher().addCallback(new OnBackPressedCallback(true) {
-//            @Override
-//            public void handleOnBackPressed() {
-//
-//            }
-//        });
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            requireActivity().getOnBackInvokedDispatcher().registerOnBackInvokedCallback(OnBackInvokedDispatcher.PRIORITY_DEFAULT, new OnBackInvokedCallback() {
-                @Override
-                public void onBackInvoked() {
-                    MyWebView mWebView = getMyWebView();
-
-                    if(mWebView!=null && mWebView.canGoBack()) mWebView.goBack();
-                    else if(getActivity() != null) requireActivity().onBackPressed();
-                }
-            });
-        }
-
-//        ViewCompat.setOnReceiveContentListener(mWebView, mWebView.MIME_TYPES, MyReceiver())
 
 
-        SwipeRefreshLayout swipeRefreshLayout = (SwipeRefreshLayout) view.findViewById(R.id.swipe_refresh_layout);
-
-
-        swipeRefreshLayout.setEnabled(true);
-
-        swipeRefreshLayout.setOnChildScrollUpCallback(new SwipeRefreshLayout.OnChildScrollUpCallback() {
-            @Override
-            public boolean canChildScrollUp(@NonNull SwipeRefreshLayout parent, @Nullable View child) {
-
-                MyWebView mWebView = getMyWebView();
-                if(getActivity() == null || mWebView == null) return false;
-//                if(mWebView == null) return false;
-////                Log.i("canChildScrollUp", mWebView.capturePullDown+"");
-////                if(!mWebView.capturePullDown) return false;
-                return mWebView.canScrollVertically(-1);
-            }
-        });
-        registerForContextMenu(mWebView);
-
-        if (savedInstanceState != null) {
-            mWebView.restoreState(savedInstanceState);
-        }
-
-        if(savedInstanceState == null) {
-            mWebView.setActivity(((AppCompatActivity) getActivity()));
-            mWebView.setFragment(this);
-            mWebView.setDefaultWebViewClient(mWebView.new BWebViewClient());
-            mWebView.setDefaultWebChromeClient(mWebView.new BWebChromeClient());
-            mWebView.setDownloadListener(mWebView.new ADownloadListener());
-
-            mWebView.wxStartSafeBrowsing();
-
-
-
-            swipeRefreshLayout.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
-                @Override
-                public void onRefresh() {
-                    MyWebView mWebView = getMyWebView();
-
-                    mWebView.getSettings().setCacheMode(WebSettings.LOAD_NO_CACHE);
-                    mWebView.clearCache(true);
-                    mWebView.reload();
-
-                    mWebView.getSettings().setCacheMode(WebSettings.LOAD_DEFAULT);
-                }
-            });
-
-            mWebView.blockAds(new MyWebView.AdBlocker() {
-                {
-                    this.initAdsList(getResources().openRawResource(R.raw.pgl_yoyo_org));
-                }
-            });
-
-            mWebView.setListener((Activity) requireActivity(), this);
-
-            setupWebViewSettings();
-
-        }
-
-        if(mWebView.getUrl() == null || mWebView.getUrl().isEmpty()){
-
-            String requestedUrl = getViewModel().webViewURL;
-            if(requestedUrl != null) {
-                mWebView.loadUrl(requestedUrl);
-            }else{
-                mWebView.loadUrl("https://www.lihkg.com/");
-            }
-
-        }
-
-        mMessage= (TextView) view.findViewById(R.id.message);
-//        mMessage.setText("1223");
-        startMemoryMonitor(1024 * 1024);
-        view.post(new Runnable() {
-            @Override
-            public void run() {
-                MyWebView mWebView = getMyWebView();
-
-                if(getActivity() == null || mWebView == null) return;
-                refreshColors();
-            }
-        });
         return view;
     }
 
-    public TextView mMessage;
+    private void showPopupMenu( View view) {
+        Context context = view.getContext();
+        PopupMenu popupMenu = new PopupMenu(context, view);
+        MenuInflater inflater = popupMenu.getMenuInflater();
+        inflater.inflate(R.menu.menu_dropdown, popupMenu.getMenu());
 
-    @Override
-    public void onResume() {
-        MyWebView mWebView = getMyWebView();
-        super.onResume();
-        Log.i("LIHKGWebView","onResume");
-        if(mWebView!=null){
-            mWebView.onResume();
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                mWebView.releasePointerCapture();
+        popupMenu.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
+            @Override
+            public boolean onMenuItemClick(MenuItem item) {
+
+                MyWebView myWebView = getMyWebView();
+                switch (item.getItemId()) {
+                    case R.id.item_profile1:
+                        // Handle item 1 click event
+
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+
+                            myWebView.hideIdentity("profile_1");
+
+//                            myWebView.setDataDirectorySuffix("profile_1");
+                        }else{
+
+                            Toast.makeText(view.getContext(),"Android 10或以上才能使用切換功能。",Toast.LENGTH_SHORT).show();
+
+                        }
+                        return true;
+                    case R.id.item_profile2:
+
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+
+
+                            myWebView.hideIdentity("profile_2");
+
+//                            myWebView.setDataDirectorySuffix("profile_2");
+                        }else{
+
+                            Toast.makeText(view.getContext(),"Android 10或以上才能使用切換功能。",Toast.LENGTH_SHORT).show();
+
+                        }
+                        // Handle item 2 click event
+                        return true;
+//                    case R.id.item_settings:
+                        // Handle item 3 click event
+//                        return true;
+                    default:
+                        return false;
+                }
             }
-            mWebView.invalidate();
-        }
-        refreshColors();
-    }
+        });
 
-    @Override
-    public void onPause() {
-        MyWebView mWebView = getMyWebView();
-        Log.i("LIHKGWebView","onPause");
-        if(mWebView!=null)mWebView.onPause();
-        super.onPause();
-    }
-
-    @Override
-    public void onDestroyView() {
-        MyWebView mWebView = getMyWebView();
-        Log.i("LIHKGWebView","onDestroyView");
-
-        if(mWebView!=null) {
-            mWebView.destroy();
-            mWebView = null;
-        }
-
-        super.onDestroyView();
-    }
-
-    @Override
-    public void onDestroy() {
-        Log.i("LIHKGWebView","onDestroy");
-        super.onDestroy();
-    }
-
-    @Override
-    public void onPageStarted(String url, Bitmap favicon) {
-
-        if(getActivity() == null) return;
-
-        if(progressBar != null)
-        progressBar.setVisibility(View.VISIBLE);
-
+        popupMenu.show();
     }
 
 
@@ -550,23 +596,75 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
 //    public void onPageStarted(String url, Bitmap favicon) { }
 
     @Override
+    public void onResume() {
+        MyWebView mWebView = getMyWebView();
+        super.onResume();
+        Log.i("LIHKGWebView", "onResume");
+        if (mWebView != null) {
+            mWebView.onResume();
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                mWebView.releasePointerCapture();
+            }
+            mWebView.invalidate();
+        }
+        refreshColors();
+    }
+
+    @Override
+    public void onPause() {
+        MyWebView mWebView = getMyWebView();
+        Log.i("LIHKGWebView", "onPause");
+        if (mWebView != null) mWebView.onPause();
+        super.onPause();
+    }
+
+    @Override
+    public void onDestroyView() {
+        MyWebView mWebView = getMyWebView();
+        Log.i("LIHKGWebView", "onDestroyView");
+
+        if (mWebView != null) {
+            mWebView.destroy();
+            mWebView = null;
+        }
+
+        super.onDestroyView();
+    }
+
+    @Override
+    public void onDestroy() {
+        Log.i("LIHKGWebView", "onDestroy");
+        super.onDestroy();
+    }
+
+    @Override
+    public void onPageStarted(String url, Bitmap favicon) {
+
+        if (getActivity() == null) return;
+
+        if (progressBar != null)
+            progressBar.setVisibility(View.VISIBLE);
+
+    }
+
+    @Override
     public void onPageFinished(String url) {
 
-        if(getActivity() == null) return;
+        if (getActivity() == null) return;
 
 //        Log.i("onPageFinished",url);
         getViewModel().webViewURL = url;
 
-        if(progressBar != null) progressBar.setVisibility(View.INVISIBLE);
+        if (progressBar != null) progressBar.setVisibility(View.INVISIBLE);
 
     }
 
     @Override
     public void onProgressChanged(WebView view, int newProgress) {
 
-        if(getActivity() == null) return;
+        if (getActivity() == null) return;
 
-        if(progressBar != null) {
+        if (progressBar != null) {
             progressBar.setProgress(newProgress);
         }
     }
@@ -574,7 +672,7 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
     @Override
     public void onPageError(int errorCode, String description, String failingUrl) {
 
-        if(getActivity() == null) return;
+        if (getActivity() == null) return;
 
     }
 
@@ -582,7 +680,7 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
     public void onDownloadRequested(String url, String mimetype, long contentLength, String contentDisposition, String userAgent) {
 
 
-        if(getActivity() == null) return;
+        if (getActivity() == null) return;
 
         int PERMISSION_REQUEST_CODE = 1;
 
@@ -594,11 +692,11 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
             }
         }
 
-        if(url.startsWith("blob:")){
+        if (url.startsWith("blob:")) {
             downloadBlob(url, userAgent, contentDisposition, mimetype);
 //            Log.i("WWS", mimetype);
 
-        }else {
+        } else {
 
             downloadFile(url, userAgent, contentDisposition, mimetype);
         }
@@ -626,7 +724,6 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
 //        Toast.makeText(requireContext(), "Image saved to Downloads folder", Toast.LENGTH_SHORT).show();
 
 
-
     }
 
     private void downloadFile(String url, String userAgent, String contentDisposition, String mimetype) {
@@ -634,10 +731,10 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
         DownloadManager.Request request = null;
         try {
             request = new DownloadManager.Request(Uri.parse(url));
-        }catch (Throwable err){
-            Log.e("LIHKGWebView","Download Failed", err);
+        } catch (Throwable err) {
+            Log.e("LIHKGWebView", "Download Failed", err);
         }
-        if(request == null) return;
+        if (request == null) return;
         request.setMimeType(mimetype);
         String fileName = URLUtil.guessFileName(url, contentDisposition, mimetype);
         request.addRequestHeader("User-Agent", userAgent);
@@ -650,13 +747,10 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
         downloadManager.enqueue(request);
     }
 
-    int downloadId = 0;
-    public HashMap<Integer, String> downloadList = new HashMap<Integer, String>();
+    /* ----- */
 
-
-
-    public String getBase64StringFromBlobUrl(String blobUrl,String mimeType) {
-        if(blobUrl.startsWith("blob")){
+    public String getBase64StringFromBlobUrl(String blobUrl, String mimeType) {
+        if (blobUrl.startsWith("blob")) {
 //            fileMimeType = mimeType;
             return "javascript: (()=>{var xhr = new XMLHttpRequest();" +
                     "xhr.onload = function(e) {" +
@@ -672,22 +766,23 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
                     "        console.log('ss', this.status, this.response);" +
                     "};" +
                     "xhr.responseType = 'arraybuffer';" +
-                    "xhr.open('GET', '"+ blobUrl +"');" +
+                    "xhr.open('GET', '" + blobUrl + "');" +
 //                    "xhr.setRequestHeader('Content-type','" + mimeType +";charset=UTF-8');" +
                     "xhr.send();console.log('tt', 33); setTimeout(()=>{console.log(xhr.status)},500) })();";
         }
         return "javascript: console.log('It is not a Blob URL');";
     }
+
     private void downloadBlob(String url, String userAgent, String contentDisposition, String mimetype) {
 
 //        String fileName = "file_" + System.currentTimeMillis() + ".pdf"; // Customize this based on your file type and desired name
 //        String mimeType = "application/pdf"; // Set MIME type based on the file type you want to download
 
-        if(getActivity() == null) return;
+        if (getActivity() == null) return;
 
         downloadId++;
         int currentId = downloadId;
-        downloadList.put(currentId, url+"\n"+userAgent+"\n"+contentDisposition+"\n"+mimetype);
+        downloadList.put(currentId, url + "\n" + userAgent + "\n" + contentDisposition + "\n" + mimetype);
         Log.i("downloadBlob", url);
         Log.e("LIHKGWebView", "blobUrl cannot be downloaded");
 
@@ -743,13 +838,9 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
     public void onExternalPageRequest(String url) {
 
 
-        if(getActivity() == null) return;
+        if (getActivity() == null) return;
 
     }
-
-    /* ----- */
-
-
 
     public void startMemoryMonitor(final long memoryThreshold) {
 
@@ -761,7 +852,7 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
             @Override
             public void run() {
                 MyWebView mWebView = getMyWebView();
-                if(getActivity() == null || mMessage == null || mWebView == null) return;
+                if (getActivity() == null || mMessage == null || mWebView == null) return;
                 long usedMemory = runtime.totalMemory() - runtime.freeMemory();
                 if (Math.abs(usedMemory - lastUsedMemoryArr[0]) >= memoryThreshold) {
                     lastUsedMemoryArr[0] = usedMemory;
@@ -780,18 +871,15 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
         mMessage.postDelayed(updateMessage, 300);
     }
 
-
-
-
-    public void refreshColors(){
+    public void refreshColors() {
 
 //        boolean isDarkMode = AppCompatDelegate.getDefaultNightMode() == AppCompatDelegate.MODE_NIGHT_YES;
         boolean isDarkMode = getViewModel().isDarkMode;
-        AppCompatActivity mActivity =  ((AppCompatActivity)getActivity());
-        if(mActivity == null) return;
+        AppCompatActivity mActivity = ((AppCompatActivity) getActivity());
+        if (mActivity == null) return;
 
-        TextView mMessage= (TextView) mActivity.findViewById(R.id.message);
-        if(mMessage==null) return;
+        TextView mMessage = (TextView) mActivity.findViewById(R.id.message);
+        if (mMessage == null) return;
 
 
         Context context = mActivity.getApplicationContext();
@@ -819,12 +907,12 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
 
         if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             final Window window = mActivity.getWindow();
-            if(window != null){
+            if (window != null) {
 
                 View view = window.getDecorView();
-                if(view != null){
+                if (view != null) {
 
-                    WindowInsetsControllerCompat wic =  WindowCompat.getInsetsController(window,view);
+                    WindowInsetsControllerCompat wic = WindowCompat.getInsetsController(window, view);
                     if (isDarkMode) {
                         wic.setAppearanceLightStatusBars(false);
                     } else {
@@ -840,23 +928,23 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
 
     }
 
-    public MainViewModel getViewModel (){
-        MainActivity mainActivity = (MainActivity) requireActivity();
-        return mainActivity.mViewModel;
+    public MainViewModel getViewModel() {
+        MainActivityBase mainActivityBase = (MainActivityBase) requireActivity();
+        return mainActivityBase.mViewModel;
     }
 
-    public void setDarkMode(boolean isDarkMode, boolean forced){
+    public void setDarkMode(boolean isDarkMode, boolean forced) {
 
-        AppCompatActivity mActivity =  ((AppCompatActivity)getActivity());
-        if(mActivity == null) return;
+        AppCompatActivity mActivity = ((AppCompatActivity) getActivity());
+        if (mActivity == null) return;
         androidx.appcompat.app.AppCompatDelegate delegate = mActivity.getDelegate();
 
         isDarkMode = getViewModel().isDarkMode;
 
-        Log.i("isDarkMode",isDarkMode+"");
+        Log.i("isDarkMode", isDarkMode + "");
 
         if (isDarkMode) {
-            if(AppCompatDelegate.getDefaultNightMode() != AppCompatDelegate.MODE_NIGHT_YES || forced) {
+            if (AppCompatDelegate.getDefaultNightMode() != AppCompatDelegate.MODE_NIGHT_YES || forced) {
                 AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES);
 
 
@@ -866,9 +954,9 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
                 delegate.applyDayNight();
             }
 //                                Log.i("MODE_NIGHT","MODE_NIGHT_YES");
-        } else  {
+        } else {
 
-            if(AppCompatDelegate.getDefaultNightMode() != AppCompatDelegate.MODE_NIGHT_NO || forced) {
+            if (AppCompatDelegate.getDefaultNightMode() != AppCompatDelegate.MODE_NIGHT_NO || forced) {
                 AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO);
 
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
@@ -884,7 +972,7 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
     private void setStatusBarColor(int color) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             Activity mActivity = getActivity();
-            if(mActivity == null) return;
+            if (mActivity == null) return;
             Window window = mActivity.getWindow();
             if (window != null) {
                 window.setStatusBarColor(color);
@@ -895,16 +983,13 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
     private void setNavigationBarColor(int color) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             Activity mActivity = getActivity();
-            if(mActivity == null) return;
+            if (mActivity == null) return;
             Window window = mActivity.getWindow();
             if (window != null) {
                 window.setNavigationBarColor(color);
             }
         }
     }
-
-    public Configuration previousConfig = null;
-
 
     @Override
     public void onConfigurationChanged(@NonNull Configuration newConfig) {
@@ -913,9 +998,9 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
         super.onConfigurationChanged(newConfig);
         boolean isDarkMode = getViewModel().isDarkMode;
 
-        if(previousConfig !=null &&  previousConfig.orientation != newConfig.orientation){
+        if (previousConfig != null && previousConfig.orientation != newConfig.orientation) {
 
-        }else{
+        } else {
 
             int nightModeFlags = newConfig.uiMode & Configuration.UI_MODE_NIGHT_MASK;
 
@@ -935,12 +1020,7 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
         setDarkMode(isDarkMode, false);
 
 
-
     }
-
-    public ImageHandler.ContextDomData webViewContextDomData = null;
-
-
 
     // Add this to your activity or fragment to handle the context menu
     @Override
@@ -953,35 +1033,35 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
                 result.getType() == WebView.HitTestResult.SRC_IMAGE_ANCHOR_TYPE || result.getType() == WebView.HitTestResult.SRC_ANCHOR_TYPE) {
 
 
-            if(webViewContextDomData!=null){
+            if (webViewContextDomData != null) {
 
 
-                View hv =  LayoutInflater.from(getContext()).inflate(R.layout.context_menu_header, null);
-                if(webViewContextDomData.img != null)
-                    ((TextView) hv.findViewById(R.id.headerLine1)).setText("Image: "  + webViewContextDomData.img );
+                View hv = LayoutInflater.from(getContext()).inflate(R.layout.context_menu_header, null);
+                if (webViewContextDomData.img != null)
+                    ((TextView) hv.findViewById(R.id.headerLine1)).setText("Image: " + webViewContextDomData.img);
                 else
-                    ((TextView) hv.findViewById(R.id.headerLine1)).setText("Image: null"  );
-                if(webViewContextDomData.link != null)
-                    ((TextView) hv.findViewById(R.id.headerLine2)).setText("Link: "  + webViewContextDomData.link );
+                    ((TextView) hv.findViewById(R.id.headerLine1)).setText("Image: null");
+                if (webViewContextDomData.link != null)
+                    ((TextView) hv.findViewById(R.id.headerLine2)).setText("Link: " + webViewContextDomData.link);
                 else
-                    ((TextView) hv.findViewById(R.id.headerLine2)).setText("Link: null"  );
-                if(webViewContextDomData.img != null){
+                    ((TextView) hv.findViewById(R.id.headerLine2)).setText("Link: null");
+                if (webViewContextDomData.img != null) {
                     ((Button) hv.findViewById(R.id.headerLeft)).setText("I");
-                }else if(webViewContextDomData.link != null){
+                } else if (webViewContextDomData.link != null) {
                     ((Button) hv.findViewById(R.id.headerLeft)).setText("L");
-                }else {
+                } else {
 
                     ((Button) hv.findViewById(R.id.headerLeft)).setText("?");
                 }
                 menu.setHeaderView(hv);
 
 
-                if(webViewContextDomData.img!=null){
+                if (webViewContextDomData.img != null) {
 
                     menu.add(0, 0x20, 1, "Save image link");
                     menu.add(1, 0x40, 1, "Share image link");
                 }
-                if(webViewContextDomData.link!=null){
+                if (webViewContextDomData.link != null) {
 
                     menu.add(0, 0x60, 2, "Save hyperlink");
                     menu.add(2, 0x80, 2, "Share hyperlink");
@@ -1003,30 +1083,30 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
     @Override
     public boolean onContextItemSelected(MenuItem item) {
         MyWebView mWebView = getMyWebView();
-        if(mWebView == null || webViewContextDomData ==null) return super.onContextItemSelected(item);
+        if (mWebView == null || webViewContextDomData == null) return super.onContextItemSelected(item);
 
 
-        if(!item.isEnabled()) return super.onContextItemSelected(item);
+        if (!item.isEnabled()) return super.onContextItemSelected(item);
 
 
-        if (item.getItemId()==0x20) {
+        if (item.getItemId() == 0x20) {
             // Code to save the image
-            if(webViewContextDomData.img!=null) imgHandler.onSaveImageSelected(webViewContextDomData.img);
+            if (webViewContextDomData.img != null) imgHandler.onSaveImageSelected(webViewContextDomData.img);
 
             return true;
-        } else if (item.getItemId()==0x40) {
+        } else if (item.getItemId() == 0x40) {
             // Code to share the image
-            if(webViewContextDomData.img!=null) imgHandler.onShareImageSelected(webViewContextDomData.img);
+            if (webViewContextDomData.img != null) imgHandler.onShareImageSelected(webViewContextDomData.img);
 
             return true;
-        } else if (item.getItemId()==0x60) {
+        } else if (item.getItemId() == 0x60) {
             // Code to save the link
-            if(webViewContextDomData.link!=null) imgHandler.onSaveImageSelected(webViewContextDomData.link);
+            if (webViewContextDomData.link != null) imgHandler.onSaveImageSelected(webViewContextDomData.link);
 
             return true;
-        } else if (item.getItemId()==0x80) {
+        } else if (item.getItemId() == 0x80) {
             // Code to share the link
-            if(webViewContextDomData.link!=null) imgHandler.onShareImageSelected(webViewContextDomData.link);
+            if (webViewContextDomData.link != null) imgHandler.onShareImageSelected(webViewContextDomData.link);
 
             return true;
         } else {
@@ -1034,11 +1114,9 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
         }
     }
 
-    public boolean fragmentDead = false;
-
     public void killWebView() {
         MyWebView mWebView = getMyWebView();
-        if(mWebView != null) {
+        if (mWebView != null) {
             mWebView.destroy();
             mWebView = null;
             mWebViewRef = null;
@@ -1049,29 +1127,28 @@ public class MainFragment extends Fragment implements MyWebView.Listener {
             @Override
             public void run() {
 
-                try{
+                try {
 
-                    if(getActivity() == null) return;
+                    if (getActivity() == null) return;
 
-                    MainActivity mActivity = (MainActivity) requireActivity();
+                    MainActivityBase mActivity = (MainActivityBase) requireActivity();
                     mActivity.getSupportFragmentManager()
                             .beginTransaction()
-                            .remove(MainFragment .this)
+                            .remove(MainFragment.this)
                             .commitAllowingStateLoss();
 
                     fragmentDead = true;
 
                     mActivity.fragmentKilled();
-                }catch (Throwable ignored){
+                } catch (Throwable ignored) {
                     // unexpected error, e.g.  not attached to an activity.
                 }
 
 
             }
-        },1);
+        }, 1);
 
     }
-
 
 
 }

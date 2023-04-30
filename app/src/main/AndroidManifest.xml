@@ -124,12 +124,13 @@
         <meta-data android:name="android.webkit.WebView.MetricsOptOut"
             android:value="true" />
         <activity
-            android:name=".MainActivity"
+            android:name=".MainActivity1"
             android:exported="true"
             android:configChanges="uiMode|orientation|screenSize"
             android:hardwareAccelerated="true"
             android:largeHeap="true"
             android:launchMode="singleInstance"
+            android:process=":first_process"
             >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -174,6 +175,57 @@
 
 
         </activity>
+
+
+        <activity
+            android:name=".MainActivity2"
+            android:exported="true"
+            android:configChanges="uiMode|orientation|screenSize"
+            android:hardwareAccelerated="true"
+            android:largeHeap="true"
+            android:launchMode="singleInstance"
+            android:process=":second_process"
+            >
+
+
+
+
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:host="lihkg.com" android:scheme="http" />
+                <data android:host="lihkg.com" android:scheme="https" />
+                <!-- lih.kg is for the shorten url sharing -->
+                <data android:host="lih.kg" android:scheme="http" />
+                <data android:host="lih.kg" android:scheme="https" />
+                <!-- na.cx is the past domain -->
+                <data android:host="lihkg.na.cx" android:scheme="http" />
+                <data android:host="lihkg.na.cx" android:scheme="https" />
+                <!-- daarj.com ?? -->
+                <data android:host="lihkg.daarj.com" android:scheme="http" />
+                <data android:host="lihkg.daarj.com" android:scheme="https" />
+                <!-- google amp -->
+                <data
+                    android:scheme="http"
+                    android:host="google.com"
+                    android:pathPattern="/amp/s/amp.lihkg.com/.*" />
+                <data
+                    android:scheme="https"
+                    android:host="google.com"
+                    android:pathPattern="/amp/s/amp.lihkg.com/.*" />
+                <data
+                    android:scheme="http"
+                    android:host="amp.lihkg.com" />
+                <data
+                    android:scheme="https"
+                    android:host="amp.lihkg.com" />
+            </intent-filter>
+
+
+
+        </activity>
+
         <provider
             android:name=".DropDataProvider"
             android:authorities="com.culefa.android.LIHKGWebView.DropDataProvider" />

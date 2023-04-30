@@ -62,7 +62,6 @@ import android.webkit.WebView;
 import android.app.AlertDialog;
 import android.widget.Toast;
 
-import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.FileProvider;
@@ -72,7 +71,7 @@ import androidx.webkit.WebSettingsCompat;
 import androidx.webkit.WebViewCompat;
 import androidx.webkit.WebViewFeature;
 
-import com.culefa.android.LIHKGWebView.MainActivity;
+import com.culefa.android.LIHKGWebView.MainActivityBase;
 import com.culefa.android.LIHKGWebView.R;
 import com.culefa.android.LIHKGWebView.ui.main.ImageHandler;
 import com.culefa.android.LIHKGWebView.ui.main.MainFragment;
@@ -131,6 +130,34 @@ public class MyWebView extends AdvancedWebView {
     public boolean onNestedPrePerformAccessibilityAction(View target, int action, Bundle args) {
         Log.i("MyWebView", "onNestedPrePerformAccessibilityAction");
         return super.onNestedPrePerformAccessibilityAction(target, action, args);
+    }
+
+
+    String strJsHideIdentity;
+    public void hideIdentity(String profileId) {
+
+//
+//        Intent intent = new Intent(this, MainActivity.class);
+////        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+////        finish();
+////        finishAfterTransition();
+//        finishAndRemoveTask();
+//        startActivity(intent);
+
+        ((MainActivityBase) this.getContext()).hideIdentity(this, profileId);
+
+//
+//
+//        if (strJsHideIdentity == null) strJsHideIdentity = readTextFile(getContext(), R.raw.lihkg_hide_identity, true);
+//        ;
+////        this.evaluateJavascript();
+//        this.evaluateJavascript("javascript: !location.hostname.endsWith('lihkg.com') ? 0 : (" + strJsHideIdentity + ")()", new ValueCallback<String>() {
+//
+//            @Override
+//            public void onReceiveValue(String value) {
+//                Log.i("2323","@@");
+//            }
+//        });
     }
 
     public static class TextInputConnection extends BaseInputConnection
@@ -276,15 +303,15 @@ public class MyWebView extends AdvancedWebView {
     }
 
     private void downloadByteArray(byte[] data, String fileName) {
-        MainActivity mainActivity = (MainActivity) mFragment.getActivity();
-        if(mainActivity == null) return;
-        File tempFile = createTempFileFromBytes(mainActivity, data);
+        MainActivityBase mainActivityBase = (MainActivityBase) mFragment.getActivity();
+        if(mainActivityBase == null) return;
+        File tempFile = createTempFileFromBytes(mainActivityBase, data);
 
         if (tempFile != null) {
-            Uri uri = FileProvider.getUriForFile(mainActivity, "com.culefa.android.LIHKGWebView.FileProvider", tempFile);
+            Uri uri = FileProvider.getUriForFile(mainActivityBase, "com.culefa.android.LIHKGWebView.FileProvider", tempFile);
             String mimeType = "application/octet-stream"; // Set MIME type based on the file type you want to download
 
-            DownloadManager downloadManager = (DownloadManager) mainActivity.getSystemService(Context.DOWNLOAD_SERVICE);
+            DownloadManager downloadManager = (DownloadManager) mainActivityBase.getSystemService(Context.DOWNLOAD_SERVICE);
             DownloadManager.Request request = new DownloadManager.Request(uri);
 
             request.setMimeType(mimeType);
@@ -416,8 +443,8 @@ public class MyWebView extends AdvancedWebView {
         public void notifySpanToolClicked(){
 
             if(inputConnection != null && mFragment != null) {
-                MainActivity mainActivity = (MainActivity) mFragment.getActivity();
-                if(mainActivity != null && mainActivity.systemSelectionMenu != null) {
+                MainActivityBase mainActivityBase = (MainActivityBase) mFragment.getActivity();
+                if(mainActivityBase != null && mainActivityBase.systemSelectionMenu != null) {
 
                     inputConnection.sendKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ESCAPE));
                     inputConnection.sendKeyEvent(new KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ESCAPE));
